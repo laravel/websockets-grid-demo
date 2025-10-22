@@ -138,7 +138,7 @@ export default function Grid({ initialCells, cellTimestamps: initialTimestamps, 
                                                     }
                                                 }}
                                                 disabled={processing || isDisabled}
-                                                className={`flex h-full w-full items-center justify-center border-2 transition-all duration-100 ${getCellColor()} bg-white text-4xl hover:bg-gray-50 disabled:opacity-50 dark:border-gray-700 dark:bg-gray-800 dark:hover:bg-gray-700`}
+                                                className={`flex h-full w-full items-center justify-center border-2 transition-all duration-100 ${getCellColor()} bg-white text-4xl leading-none hover:bg-gray-50 disabled:opacity-50 dark:border-gray-700 dark:bg-gray-800 dark:hover:bg-gray-700`}
                                             >
                                                 <div className="relative flex h-full w-full items-center justify-center">
                                                     {cells[position] || ''}
