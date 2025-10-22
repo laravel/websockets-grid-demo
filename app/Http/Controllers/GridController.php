@@ -13,7 +13,7 @@ class GridController extends Controller
 
     private const GRID_TIMESTAMPS_KEY = 'emoji_grid_timestamps';
 
-    private const COOLDOWN_SECONDS = 10;
+    private const COOLDOWN_SECONDS = 5;
 
     public function show(): \Inertia\Response
     {
@@ -53,6 +53,19 @@ class GridController extends Controller
             'emoji' => $validated['emoji'],
             'timestamp' => $timestamps[$position],
         ]))->toOthers();
+
+        return response()->json(['success' => true]);
+    }
+
+    public function clear(int $position): \Illuminate\Http\JsonResponse
+    {
+        $cells = Cache::get(self::GRID_CACHE_KEY, []);
+        unset($cells[$position]);
+        Cache::forever(self::GRID_CACHE_KEY, $cells);
+
+        $timestamps = Cache::get(self::GRID_TIMESTAMPS_KEY, []);
+        unset($timestamps[$position]);
+        Cache::forever(self::GRID_TIMESTAMPS_KEY, $timestamps);
 
         return response()->json(['success' => true]);
     }

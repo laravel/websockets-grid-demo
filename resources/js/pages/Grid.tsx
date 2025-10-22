@@ -12,6 +12,7 @@ const EMOJIS = ['🚀', '❤️', '🤯', '🔥'];
 const GRID_COLUMNS = 10;
 const GRID_ROWS = 10;
 const GRID_SIZE = GRID_COLUMNS * GRID_ROWS;
+const EMOJI_FADE_DURATION = 60000;
 
 interface Props {
     initialCells: Record<number, string>;
@@ -24,23 +25,73 @@ export default function Grid({ initialCells, cellTimestamps: initialTimestamps, 
     const [selectedEmoji, setSelectedEmoji] = useState(EMOJIS[0]);
     const [timestamps, setTimestamps] = useState<Record<number, number>>(initialTimestamps);
     const [cooldowns, setCooldowns] = useState<Record<number, number>>({});
+    const [fadeOpacity, setFadeOpacity] = useState<Record<number, number>>({});
 
     useEffect(() => {
         const interval = setInterval(() => {
-            const now = Math.floor(Date.now() / 1000);
+            const now = Date.now();
             const newCooldowns: Record<number, number> = {};
+            const newFadeOpacity: Record<number, number> = {};
+            const nowSeconds = Math.floor(now / 1000);
 
             Object.entries(timestamps).forEach(([pos, timestamp]) => {
-                const remaining = cooldownSeconds - (now - timestamp);
+                const remaining = cooldownSeconds - (nowSeconds - timestamp);
                 if (remaining > 0) {
                     newCooldowns[parseInt(pos)] = Math.ceil(remaining);
+                }
+
+                const ageMs = now - timestamp * 1000;
+                const cooldownMs = cooldownSeconds * 1000;
+
+                if (ageMs > cooldownMs) {
+                    const fadeStartMs = cooldownMs;
+                    const fadeElapsedMs = ageMs - fadeStartMs;
+                    const fadeProgress = Math.min(fadeElapsedMs / EMOJI_FADE_DURATION, 1);
+                    if (fadeProgress < 1) {
+                        newFadeOpacity[parseInt(pos)] = 1 - fadeProgress;
+                    } else {
+                        newFadeOpacity[parseInt(pos)] = 0;
+                    }
+                } else {
+                    newFadeOpacity[parseInt(pos)] = 1;
                 }
             });
 
             setCooldowns(newCooldowns);
+            setFadeOpacity(newFadeOpacity);
         }, 100);
 
         return () => clearInterval(interval);
+    }, [timestamps, cooldownSeconds]);
+
+    useEffect(() => {
+        const checkFadeComplete = setInterval(() => {
+            const now = Date.now();
+            setCells((prev) => {
+                const updated = { ...prev };
+                Object.entries(timestamps).forEach(([pos, timestamp]) => {
+                    const ageMs = now - timestamp * 1000;
+                    const cooldownMs = cooldownSeconds * 1000;
+                    const totalLifeMs = cooldownMs + EMOJI_FADE_DURATION;
+
+                    if (ageMs > totalLifeMs && updated[parseInt(pos)]) {
+                        updated[parseInt(pos)] = null;
+
+                        const csrfToken = document.querySelector('meta[name="csrf-token"]') as HTMLMetaElement;
+                        fetch(`/grid/${pos}/clear`, {
+                            method: 'DELETE',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'X-CSRF-Token': csrfToken?.content || '',
+                            },
+                        }).catch((error) => console.error('Failed to clear cell:', error));
+                    }
+                });
+                return updated;
+            });
+        }, 500);
+
+        return () => clearInterval(checkFadeComplete);
     }, [timestamps, cooldownSeconds]);
 
     useEchoPublic('grid', '.cell-updated', (data: { position: number; emoji: string; timestamp: number }) => {
@@ -207,7 +258,13 @@ export default function Grid({ initialCells, cellTimestamps: initialTimestamps, 
                                     disabled={isDisabled}
                                     className={`flex h-full w-full items-center justify-center border-2 transition-all duration-100 ${getCellColor()} bg-white text-4xl hover:bg-gray-50 disabled:opacity-50 dark:border-gray-700 dark:bg-gray-800 dark:hover:bg-gray-700`}
                                 >
-                                    <div className="relative flex h-full w-full items-center justify-center">
+                                    <div
+                                        className="relative flex h-full w-full items-center justify-center"
+                                        style={{
+                                            opacity: fadeOpacity[position] !== undefined ? fadeOpacity[position] : 1,
+                                            transition: 'opacity 100ms linear',
+                                        }}
+                                    >
                                         {cells[position] || ''}
                                         {cooldown && (
                                             <div className="absolute right-0 bottom-0 flex h-5 w-5 items-center justify-center rounded-full bg-white text-xs font-bold text-gray-600 dark:bg-gray-800 dark:text-gray-300">
