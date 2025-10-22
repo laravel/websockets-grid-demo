@@ -32,16 +32,15 @@ export default function Grid({ initialCells, cellTimestamps: initialTimestamps, 
             const now = Date.now();
             const newCooldowns: Record<number, number> = {};
             const newFadeOpacity: Record<number, number> = {};
-            const nowSeconds = Math.floor(now / 1000);
+            const cooldownMs = cooldownSeconds * 1000;
 
             Object.entries(timestamps).forEach(([pos, timestamp]) => {
-                const remaining = cooldownSeconds - (nowSeconds - timestamp);
-                if (remaining > 0) {
-                    newCooldowns[parseInt(pos)] = Math.ceil(remaining);
-                }
+                const ageMs = now - timestamp;
+                const remainingMs = cooldownMs - ageMs;
 
-                const ageMs = now - timestamp * 1000;
-                const cooldownMs = cooldownSeconds * 1000;
+                if (remainingMs > 0) {
+                    newCooldowns[parseInt(pos)] = Math.ceil(remainingMs / 1000);
+                }
 
                 if (ageMs > cooldownMs) {
                     const fadeStartMs = cooldownMs;
@@ -70,7 +69,7 @@ export default function Grid({ initialCells, cellTimestamps: initialTimestamps, 
             setCells((prev) => {
                 const updated = { ...prev };
                 Object.entries(timestamps).forEach(([pos, timestamp]) => {
-                    const ageMs = now - timestamp * 1000;
+                    const ageMs = now - timestamp;
                     const cooldownMs = cooldownSeconds * 1000;
                     const totalLifeMs = cooldownMs + EMOJI_FADE_DURATION;
 
@@ -237,7 +236,7 @@ export default function Grid({ initialCells, cellTimestamps: initialTimestamps, 
                                             }));
                                             setTimestamps((prev) => ({
                                                 ...prev,
-                                                [position]: Math.floor(Date.now() / 1000),
+                                                [position]: Date.now(),
                                             }));
 
                                             try {

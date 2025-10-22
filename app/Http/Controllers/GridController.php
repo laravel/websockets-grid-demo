@@ -35,9 +35,11 @@ class GridController extends Controller
 
         $timestamps = Cache::get(self::GRID_TIMESTAMPS_KEY, []);
         $lastUpdate = $timestamps[$position] ?? 0;
-        $timeSinceUpdate = time() - $lastUpdate;
+        $nowMs = round(microtime(true) * 1000);
+        $timeSinceUpdateMs = $nowMs - $lastUpdate;
+        $cooldownMs = self::COOLDOWN_SECONDS * 1000;
 
-        if ($timeSinceUpdate < self::COOLDOWN_SECONDS && $lastUpdate > 0) {
+        if ($timeSinceUpdateMs < $cooldownMs && $lastUpdate > 0) {
             return response()->json(['error' => 'Cell is on cooldown'], 429);
         }
 
@@ -45,7 +47,7 @@ class GridController extends Controller
         $cells[$position] = $validated['emoji'];
         Cache::forever(self::GRID_CACHE_KEY, $cells);
 
-        $timestamps[$position] = time();
+        $timestamps[$position] = $nowMs;
         Cache::forever(self::GRID_TIMESTAMPS_KEY, $timestamps);
 
         broadcast(new GridCellUpdated([
