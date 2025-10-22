@@ -1,6 +1,5 @@
-import { Form, Head } from '@inertiajs/react';
+import { Head } from '@inertiajs/react';
 import { useEchoPublic } from '@laravel/echo-react';
-import { update as gridUpdate } from 'App/Http/Controllers/GridController';
 import { useEffect, useState } from 'react';
 
 declare global {
@@ -90,6 +89,7 @@ export default function Grid({ initialCells, cellTimestamps: initialTimestamps, 
                         className="grid gap-0 rounded-lg border border-gray-300 bg-gray-50 p-4 dark:border-gray-700 dark:bg-gray-900"
                         style={{
                             gridTemplateColumns: `repeat(${GRID_COLUMNS}, minmax(0, 1fr))`,
+                            gridAutoRows: '1fr',
                             width: '100vw',
                             height: '100vw',
                             maxWidth: '800px',
@@ -110,48 +110,47 @@ export default function Grid({ initialCells, cellTimestamps: initialTimestamps, 
                             };
 
                             return (
-                                <Form
+                                <button
                                     key={position}
-                                    action={gridUpdate(position)}
-                                    method="put"
-                                    onError={(errors: Record<string, string | string[]>) => {
-                                        console.error('Validation errors:', errors);
-                                    }}
-                                >
-                                    {({ processing, submit }) => (
-                                        <>
-                                            <input type="hidden" name="emoji" value={selectedEmoji} />
+                                    type="button"
+                                    onClick={async () => {
+                                        if (!isDisabled) {
+                                            setCells((prev) => ({
+                                                ...prev,
+                                                [position]: selectedEmoji,
+                                            }));
+                                            setTimestamps((prev) => ({
+                                                ...prev,
+                                                [position]: Math.floor(Date.now() / 1000),
+                                            }));
 
-                                            <button
-                                                type="button"
-                                                onClick={() => {
-                                                    if (!isDisabled) {
-                                                        setCells((prev) => ({
-                                                            ...prev,
-                                                            [position]: selectedEmoji,
-                                                        }));
-                                                        setTimestamps((prev) => ({
-                                                            ...prev,
-                                                            [position]: Math.floor(Date.now() / 1000),
-                                                        }));
-                                                        submit();
-                                                    }
-                                                }}
-                                                disabled={processing || isDisabled}
-                                                className={`flex h-full w-full items-center justify-center border-2 transition-all duration-100 ${getCellColor()} bg-white text-4xl leading-none hover:bg-gray-50 disabled:opacity-50 dark:border-gray-700 dark:bg-gray-800 dark:hover:bg-gray-700`}
-                                            >
-                                                <div className="relative flex h-full w-full items-center justify-center">
-                                                    {cells[position] || ''}
-                                                    {cooldown && (
-                                                        <div className="absolute right-0 bottom-0 flex h-5 w-5 items-center justify-center rounded-full bg-white text-xs font-bold text-gray-600 dark:bg-gray-800 dark:text-gray-300">
-                                                            {cooldown}
-                                                        </div>
-                                                    )}
-                                                </div>
-                                            </button>
-                                        </>
-                                    )}
-                                </Form>
+                                            try {
+                                                await fetch(`/grid/${position}`, {
+                                                    method: 'PUT',
+                                                    headers: {
+                                                        'Content-Type': 'application/json',
+                                                        'X-CSRF-Token':
+                                                            (document.querySelector('meta[name="csrf-token"]') as HTMLMetaElement)?.content || '',
+                                                    },
+                                                    body: JSON.stringify({ emoji: selectedEmoji }),
+                                                });
+                                            } catch (error) {
+                                                console.error('Failed to update cell:', error);
+                                            }
+                                        }
+                                    }}
+                                    disabled={isDisabled}
+                                    className={`flex h-full w-full items-center justify-center border-2 transition-all duration-100 ${getCellColor()} bg-white text-4xl hover:bg-gray-50 disabled:opacity-50 dark:border-gray-700 dark:bg-gray-800 dark:hover:bg-gray-700`}
+                                >
+                                    <div className="relative flex h-full w-full items-center justify-center">
+                                        {cells[position] || ''}
+                                        {cooldown && (
+                                            <div className="absolute right-0 bottom-0 flex h-5 w-5 items-center justify-center rounded-full bg-white text-xs font-bold text-gray-600 dark:bg-gray-800 dark:text-gray-300">
+                                                {cooldown}
+                                            </div>
+                                        )}
+                                    </div>
+                                </button>
                             );
                         })}
                     </div>

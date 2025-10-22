@@ -10,7 +10,9 @@ use Inertia\Inertia;
 class GridController extends Controller
 {
     private const GRID_CACHE_KEY = 'emoji_grid';
+
     private const GRID_TIMESTAMPS_KEY = 'emoji_grid_timestamps';
+
     private const COOLDOWN_SECONDS = 10;
 
     public function show(): \Inertia\Response
@@ -25,7 +27,7 @@ class GridController extends Controller
         ]);
     }
 
-    public function update(Request $request, int $position): \Illuminate\Http\RedirectResponse
+    public function update(Request $request, int $position): \Illuminate\Http\JsonResponse
     {
         $validated = $request->validate([
             'emoji' => 'required|string|in:🚀,❤️,🤯,🔥',
@@ -36,7 +38,7 @@ class GridController extends Controller
         $timeSinceUpdate = time() - $lastUpdate;
 
         if ($timeSinceUpdate < self::COOLDOWN_SECONDS && $lastUpdate > 0) {
-            return redirect('/');
+            return response()->json(['error' => 'Cell is on cooldown'], 429);
         }
 
         $cells = Cache::get(self::GRID_CACHE_KEY, []);
@@ -52,8 +54,6 @@ class GridController extends Controller
             'timestamp' => $timestamps[$position],
         ]))->toOthers();
 
-        return redirect('/');
+        return response()->json(['success' => true]);
     }
-
-
 }
