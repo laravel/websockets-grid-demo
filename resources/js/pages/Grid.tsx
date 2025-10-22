@@ -180,7 +180,7 @@ export default function Grid({ initialCells, cellTimestamps: initialTimestamps, 
                                 </clipPath>
                             </defs>
                         </svg>
-                        <p className="text-sm text-gray-300">Real-time collaborative grid — click to add emojis</p>
+                        <p className="text-sm text-gray-900 dark:text-gray-300">Real-time collaborative grid — click to add emojis</p>
                         <div className="flex gap-2 sm:gap-3">
                             {EMOJIS.map((emoji) => (
                                 <button
@@ -201,7 +201,7 @@ export default function Grid({ initialCells, cellTimestamps: initialTimestamps, 
 
                 <div className="flex flex-1 items-center justify-center overflow-auto">
                     <div
-                        className="grid gap-0 rounded-lg border border-gray-300 bg-gray-50 p-4 dark:border-gray-700 dark:bg-gray-900"
+                        className="mt-4 grid gap-0 rounded-lg border border-gray-300 bg-gray-50 p-4 sm:mt-0 dark:border-gray-700 dark:bg-gray-900"
                         style={{
                             gridTemplateColumns: `repeat(${GRID_COLUMNS}, minmax(0, 1fr))`,
                             gridAutoRows: '1fr',
