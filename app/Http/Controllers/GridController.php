@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Events\GridCellClicked;
 use App\Events\GridCellUpdated;
+use App\Events\GridRainStarted;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 use Inertia\Inertia;
@@ -15,6 +16,10 @@ class GridController extends Controller
     private const GRID_TIMESTAMPS_KEY = 'emoji_grid_timestamps';
 
     private const GRID_CLICK_COUNTS_KEY = 'emoji_grid_click_counts';
+
+    private const RAIN_COOLDOWN_KEY = 'emoji_grid_rain_cooldown';
+
+    private const RAIN_COOLDOWN_DURATION = 120;
 
     public function show(): \Inertia\Response
     {
@@ -59,6 +64,12 @@ class GridController extends Controller
 
         broadcast(new GridCellClicked($position, $clickCounts[$position]));
 
+        if ($this->isGridUniform($cells) && $this->canTriggerRain($emoji)) {
+            $this->setRainCooldown($emoji);
+            $displayEmoji = $this->getDisplayEmoji($emoji);
+            broadcast(new GridRainStarted($displayEmoji));
+        }
+
         return response()->json(['success' => true, 'clickCount' => $clickCounts[$position]]);
     }
 
@@ -88,5 +99,44 @@ class GridController extends Controller
             $clickCount >= 10 => '🚀',
             default => '❤️',
         };
+    }
+
+    private function isGridUniform(array $cells): bool
+    {
+        $gridSize = 100;
+
+        if (count($cells) !== $gridSize) {
+            return false;
+        }
+
+        $firstEmoji = reset($cells);
+        foreach ($cells as $emoji) {
+            if ($emoji !== $firstEmoji) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    private function getDisplayEmoji(string $emoji): string
+    {
+        return $emoji === 'taylor' ? '🧑' : $emoji;
+    }
+
+    private function canTriggerRain(string $emoji): bool
+    {
+        $cooldown = Cache::get(self::RAIN_COOLDOWN_KEY);
+
+        if ($cooldown === null) {
+            return true;
+        }
+
+        return $cooldown !== $emoji;
+    }
+
+    private function setRainCooldown(string $emoji): void
+    {
+        Cache::put(self::RAIN_COOLDOWN_KEY, $emoji, self::RAIN_COOLDOWN_DURATION);
     }
 }

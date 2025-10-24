@@ -46,6 +46,28 @@ const getGlowIntensity = (progress: number): string => {
     return '';
 };
 
+interface RaindropProps {
+    emoji: string;
+    delay: number;
+    left: number;
+}
+
+const Raindrop = ({ emoji, delay, left }: RaindropProps) => {
+    return (
+        <div
+            className="pointer-events-none fixed text-4xl sm:text-6xl"
+            style={{
+                left: `${left}%`,
+                top: '-100px',
+                animation: `fall 15s linear ${delay}s forwards`,
+                zIndex: 9999,
+            }}
+        >
+            {emoji}
+        </div>
+    );
+};
+
 interface Props {
     initialCells: Record<number, string>;
     cellTimestamps: Record<number, number>;
@@ -59,6 +81,8 @@ export default function Grid({ initialCells, cellTimestamps: initialTimestamps, 
     const [fadeOpacity, setFadeOpacity] = useState<Record<number, number>>({});
     const [shakeKey, setShakeKey] = useState<Record<number, number>>({});
     const [pulsingCells, setPulsingCells] = useState<Record<number, number>>({});
+    const [rainEmoji, setRainEmoji] = useState<string | null>(null);
+    const [raindrops, setRaindrops] = useState<RaindropProps[]>([]);
 
     useEffect(() => {
         const interval = setInterval(() => {
@@ -146,10 +170,38 @@ export default function Grid({ initialCells, cellTimestamps: initialTimestamps, 
         }
     });
 
+    useEchoPublic('grid', '.rain-started', (data: { emoji: string }) => {
+        setRainEmoji(data.emoji);
+        const drops: RaindropProps[] = Array.from({ length: 50 }).map(() => ({
+            emoji: data.emoji,
+            delay: Math.random() * 15,
+            left: Math.random() * 100,
+        }));
+        setRaindrops(drops);
+
+        setTimeout(() => {
+            setRainEmoji(null);
+            setRaindrops([]);
+        }, 15000);
+    });
+
     return (
         <>
+            <style>
+                {`
+                    @keyframes fall {
+                        to {
+                            transform: translateY(100vh);
+                            opacity: 0;
+                        }
+                    }
+                `}
+            </style>
             <Head title="Emoji Grid" />
             <div className="flex min-h-screen flex-col bg-white dark:bg-black">
+                {raindrops.map((drop, index) => (
+                    <Raindrop key={index} emoji={drop.emoji} delay={drop.delay} left={drop.left} />
+                ))}
                 <div className="border-b border-gray-200 bg-gray-50 px-4 py-4 sm:px-6 sm:py-6 dark:border-gray-800 dark:bg-gray-900">
                     <div className="flex flex-col items-center gap-4">
                         <svg width="245" height="32" viewBox="0 0 491 64" fill="none" xmlns="http://www.w3.org/2000/svg" className="h-8 w-auto">
@@ -223,7 +275,7 @@ export default function Grid({ initialCells, cellTimestamps: initialTimestamps, 
                             </defs>
                         </svg>
                         <p className="text-sm text-gray-900 dark:text-gray-300">Real-time collaborative grid — click cells to level up emojis</p>
-                        <div className="flex gap-4 sm:gap-6">
+                        <div className="flex flex-wrap justify-center gap-4 sm:gap-6">
                             <div className="relative">
                                 <div className="rounded-lg bg-white px-3 py-1 text-4xl dark:bg-gray-800">❤️</div>
                                 <div className="absolute right-0 bottom-0 flex h-6 w-6 items-center justify-center rounded-full bg-gray-900 text-xs font-bold text-white dark:bg-gray-100 dark:text-gray-900">
@@ -332,18 +384,30 @@ export default function Grid({ initialCells, cellTimestamps: initialTimestamps, 
                                             console.error('Failed to update cell:', error);
                                         }
                                     }}
-                                    className="flex h-full w-full items-center justify-center border-2 border-gray-200 bg-white text-4xl transition-all duration-100 hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-800 dark:hover:bg-gray-700"
+                                    className="relative flex h-full w-full items-center justify-center border-2 border-gray-200 bg-white text-4xl transition-all duration-100 hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-800 dark:hover:bg-gray-700"
                                 >
                                     <div
                                         key={`shake-${shakeKeyValue}`}
-                                        className={`relative flex h-full w-full items-center justify-center ${shakeKeyValue > 0 ? getShakeIntensity(getProgressToNextLevel(clickCount)) : ''} ${pulseClickCount > 0 ? getGlowIntensity(progress) : ''}`}
+                                        className={`relative flex h-full w-full items-center justify-center text-xl sm:text-4xl ${shakeKeyValue > 0 ? getShakeIntensity(getProgressToNextLevel(clickCount)) : ''} ${pulseClickCount > 0 ? getGlowIntensity(progress) : ''}`}
                                         style={{
                                             opacity: fadeOpacity[position] !== undefined ? fadeOpacity[position] : 1,
                                             transition: 'opacity 100ms linear',
+                                            lineHeight: '1',
                                         }}
                                     >
                                         {renderEmoji()}
                                     </div>
+                                    {clickCount > 0 && (
+                                        <div
+                                            className="absolute right-0.5 bottom-0.5 hidden h-5 w-5 items-center justify-center rounded-full bg-gray-900 text-xs font-bold text-white sm:flex dark:bg-white dark:text-gray-900"
+                                            style={{
+                                                opacity: fadeOpacity[position] !== undefined ? fadeOpacity[position] : 1,
+                                                transition: 'opacity 100ms linear',
+                                            }}
+                                        >
+                                            {clickCount > 99 ? '99+' : clickCount}
+                                        </div>
+                                    )}
                                 </button>
                             );
                         })}
