@@ -345,7 +345,19 @@ export default function Grid({ initialCells, cellTimestamps: initialTimestamps, 
                                     type="button"
                                     onClick={async () => {
                                         const currentClickCount = (clickCounts[position] || 0) + 1;
+                                        const getEmojiForClickCount = (count: number): string => {
+                                            if (count >= 500) return 'taylor';
+                                            if (count >= 100) return '🔥';
+                                            if (count >= 50) return '🤯';
+                                            if (count >= 10) return '🚀';
+                                            return '❤️';
+                                        };
+                                        const newEmoji = getEmojiForClickCount(currentClickCount);
 
+                                        setCells((prev) => ({
+                                            ...prev,
+                                            [position]: newEmoji,
+                                        }));
                                         setClickCounts((prev) => ({
                                             ...prev,
                                             [position]: currentClickCount,
