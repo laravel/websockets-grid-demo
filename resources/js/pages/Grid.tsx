@@ -129,17 +129,21 @@ export default function Grid({ initialCells, cellTimestamps: initialTimestamps, 
             ...prev,
             [data.position]: (prev[data.position] || 0) + 1,
         }));
-        setPulsingCells((prev) => ({
-            ...prev,
-            [data.position]: data.clickCount,
-        }));
 
-        setTimeout(() => {
+        const currentPulse = pulsingCells[data.position] || 0;
+        if (currentPulse === 0) {
             setPulsingCells((prev) => ({
                 ...prev,
-                [data.position]: 0,
+                [data.position]: data.clickCount,
             }));
-        }, 1500);
+
+            setTimeout(() => {
+                setPulsingCells((prev) => ({
+                    ...prev,
+                    [data.position]: 0,
+                }));
+            }, 1500);
+        }
     });
 
     return (
@@ -289,6 +293,7 @@ export default function Grid({ initialCells, cellTimestamps: initialTimestamps, 
                                     type="button"
                                     onClick={async () => {
                                         const currentClickCount = (clickCounts[position] || 0) + 1;
+
                                         setClickCounts((prev) => ({
                                             ...prev,
                                             [position]: currentClickCount,
