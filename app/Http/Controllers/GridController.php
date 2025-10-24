@@ -13,50 +13,50 @@ class GridController extends Controller
 
     private const GRID_TIMESTAMPS_KEY = 'emoji_grid_timestamps';
 
-    private const COOLDOWN_SECONDS = 5;
+    private const GRID_CLICK_COUNTS_KEY = 'emoji_grid_click_counts';
 
     public function show(): \Inertia\Response
     {
         $cells = Cache::get(self::GRID_CACHE_KEY, []);
         $timestamps = Cache::get(self::GRID_TIMESTAMPS_KEY, []);
+        $clickCounts = Cache::get(self::GRID_CLICK_COUNTS_KEY, []);
 
         return Inertia::render('Grid', [
             'initialCells' => $cells,
             'cellTimestamps' => $timestamps,
-            'cooldownSeconds' => self::COOLDOWN_SECONDS,
+            'cellClickCounts' => $clickCounts,
         ]);
     }
 
     public function update(Request $request, int $position): \Illuminate\Http\JsonResponse
     {
         $validated = $request->validate([
-            'emoji' => 'required|string|in:🚀,❤️,🤯,🔥',
+            'click' => 'required|boolean',
         ]);
 
-        $timestamps = Cache::get(self::GRID_TIMESTAMPS_KEY, []);
-        $lastUpdate = $timestamps[$position] ?? 0;
-        $nowMs = round(microtime(true) * 1000);
-        $timeSinceUpdateMs = $nowMs - $lastUpdate;
-        $cooldownMs = self::COOLDOWN_SECONDS * 1000;
+        $clickCounts = Cache::get(self::GRID_CLICK_COUNTS_KEY, []);
+        $clickCounts[$position] = ($clickCounts[$position] ?? 0) + 1;
+        Cache::forever(self::GRID_CLICK_COUNTS_KEY, $clickCounts);
 
-        if ($timeSinceUpdateMs < $cooldownMs && $lastUpdate > 0) {
-            return response()->json(['error' => 'Cell is on cooldown'], 429);
-        }
+        $emoji = $this->getEmojiForClickCount($clickCounts[$position]);
 
         $cells = Cache::get(self::GRID_CACHE_KEY, []);
-        $cells[$position] = $validated['emoji'];
+        $cells[$position] = $emoji;
         Cache::forever(self::GRID_CACHE_KEY, $cells);
 
+        $nowMs = round(microtime(true) * 1000);
+        $timestamps = Cache::get(self::GRID_TIMESTAMPS_KEY, []);
         $timestamps[$position] = $nowMs;
         Cache::forever(self::GRID_TIMESTAMPS_KEY, $timestamps);
 
         broadcast(new GridCellUpdated([
             'position' => $position,
-            'emoji' => $validated['emoji'],
+            'emoji' => $emoji,
             'timestamp' => $timestamps[$position],
+            'clickCount' => $clickCounts[$position],
         ]))->toOthers();
 
-        return response()->json(['success' => true]);
+        return response()->json(['success' => true, 'clickCount' => $clickCounts[$position]]);
     }
 
     public function clear(int $position): \Illuminate\Http\JsonResponse
@@ -69,6 +69,21 @@ class GridController extends Controller
         unset($timestamps[$position]);
         Cache::forever(self::GRID_TIMESTAMPS_KEY, $timestamps);
 
+        $clickCounts = Cache::get(self::GRID_CLICK_COUNTS_KEY, []);
+        unset($clickCounts[$position]);
+        Cache::forever(self::GRID_CLICK_COUNTS_KEY, $clickCounts);
+
         return response()->json(['success' => true]);
+    }
+
+    private function getEmojiForClickCount(int $clickCount): string
+    {
+        return match (true) {
+            $clickCount >= 500 => 'taylor',
+            $clickCount >= 100 => '🔥',
+            $clickCount >= 50 => '🤯',
+            $clickCount >= 10 => '🚀',
+            default => '❤️',
+        };
     }
 }

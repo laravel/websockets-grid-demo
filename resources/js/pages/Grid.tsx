@@ -8,60 +8,44 @@ declare global {
     }
 }
 
-const EMOJIS = ['🚀', '❤️', '🤯', '🔥'];
 const GRID_COLUMNS = 10;
 const GRID_ROWS = 10;
 const GRID_SIZE = GRID_COLUMNS * GRID_ROWS;
 const EMOJI_FADE_DURATION = 60000;
+const TAYLOR_EMOJI_URL = 'https://emoji.slack-edge.com/T030VF85W/taylor/0f1e49b19df93f08.png';
 
 interface Props {
     initialCells: Record<number, string>;
     cellTimestamps: Record<number, number>;
-    cooldownSeconds: number;
+    cellClickCounts: Record<number, number>;
 }
 
-export default function Grid({ initialCells, cellTimestamps: initialTimestamps, cooldownSeconds }: Props) {
+export default function Grid({ initialCells, cellTimestamps: initialTimestamps, cellClickCounts: initialClickCounts }: Props) {
     const [cells, setCells] = useState<Record<number, string | null>>(initialCells);
-    const [selectedEmoji, setSelectedEmoji] = useState(EMOJIS[0]);
     const [timestamps, setTimestamps] = useState<Record<number, number>>(initialTimestamps);
-    const [cooldowns, setCooldowns] = useState<Record<number, number>>({});
+    const [clickCounts, setClickCounts] = useState<Record<number, number>>(initialClickCounts);
     const [fadeOpacity, setFadeOpacity] = useState<Record<number, number>>({});
 
     useEffect(() => {
         const interval = setInterval(() => {
             const now = Date.now();
-            const newCooldowns: Record<number, number> = {};
             const newFadeOpacity: Record<number, number> = {};
-            const cooldownMs = cooldownSeconds * 1000;
 
             Object.entries(timestamps).forEach(([pos, timestamp]) => {
                 const ageMs = now - timestamp;
-                const remainingMs = cooldownMs - ageMs;
-
-                if (remainingMs > 0) {
-                    newCooldowns[parseInt(pos)] = Math.ceil(remainingMs / 1000);
-                }
-
-                if (ageMs > cooldownMs) {
-                    const fadeStartMs = cooldownMs;
-                    const fadeElapsedMs = ageMs - fadeStartMs;
-                    const fadeProgress = Math.min(fadeElapsedMs / EMOJI_FADE_DURATION, 1);
-                    if (fadeProgress < 1) {
-                        newFadeOpacity[parseInt(pos)] = 1 - fadeProgress;
-                    } else {
-                        newFadeOpacity[parseInt(pos)] = 0;
-                    }
+                const fadeProgress = Math.min(ageMs / EMOJI_FADE_DURATION, 1);
+                if (fadeProgress < 1) {
+                    newFadeOpacity[parseInt(pos)] = 1 - fadeProgress;
                 } else {
-                    newFadeOpacity[parseInt(pos)] = 1;
+                    newFadeOpacity[parseInt(pos)] = 0;
                 }
             });
 
-            setCooldowns(newCooldowns);
             setFadeOpacity(newFadeOpacity);
         }, 100);
 
         return () => clearInterval(interval);
-    }, [timestamps, cooldownSeconds]);
+    }, [timestamps]);
 
     useEffect(() => {
         const checkFadeComplete = setInterval(() => {
@@ -70,10 +54,8 @@ export default function Grid({ initialCells, cellTimestamps: initialTimestamps, 
                 const updated = { ...prev };
                 Object.entries(timestamps).forEach(([pos, timestamp]) => {
                     const ageMs = now - timestamp;
-                    const cooldownMs = cooldownSeconds * 1000;
-                    const totalLifeMs = cooldownMs + EMOJI_FADE_DURATION;
 
-                    if (ageMs > totalLifeMs && updated[parseInt(pos)]) {
+                    if (ageMs > EMOJI_FADE_DURATION && updated[parseInt(pos)]) {
                         updated[parseInt(pos)] = null;
 
                         const csrfToken = document.querySelector('meta[name="csrf-token"]') as HTMLMetaElement;
@@ -91,9 +73,9 @@ export default function Grid({ initialCells, cellTimestamps: initialTimestamps, 
         }, 500);
 
         return () => clearInterval(checkFadeComplete);
-    }, [timestamps, cooldownSeconds]);
+    }, [timestamps]);
 
-    useEchoPublic('grid', '.cell-updated', (data: { position: number; emoji: string; timestamp: number }) => {
+    useEchoPublic('grid', '.cell-updated', (data: { position: number; emoji: string; timestamp: number; clickCount: number }) => {
         setCells((prev) => ({
             ...prev,
             [data.position]: data.emoji,
@@ -101,6 +83,10 @@ export default function Grid({ initialCells, cellTimestamps: initialTimestamps, 
         setTimestamps((prev) => ({
             ...prev,
             [data.position]: data.timestamp,
+        }));
+        setClickCounts((prev) => ({
+            ...prev,
+            [data.position]: data.clickCount,
         }));
     });
 
@@ -180,21 +166,40 @@ export default function Grid({ initialCells, cellTimestamps: initialTimestamps, 
                                 </clipPath>
                             </defs>
                         </svg>
-                        <p className="text-sm text-gray-900 dark:text-gray-300">Real-time collaborative grid — click to add emojis</p>
-                        <div className="flex gap-2 sm:gap-3">
-                            {EMOJIS.map((emoji) => (
-                                <button
-                                    key={emoji}
-                                    onClick={() => setSelectedEmoji(emoji)}
-                                    className={`rounded-lg px-3 py-1 text-2xl transition-all duration-200 sm:text-2xl ${
-                                        selectedEmoji === emoji
-                                            ? 'scale-105 bg-gray-300 dark:bg-orange-900/60'
-                                            : 'bg-white hover:bg-gray-100 dark:bg-gray-800 dark:hover:bg-gray-700'
-                                    }`}
-                                >
-                                    {emoji}
-                                </button>
-                            ))}
+                        <p className="text-sm text-gray-900 dark:text-gray-300">Real-time collaborative grid — click cells to level up emojis</p>
+                        <div className="flex gap-4 sm:gap-6">
+                            <div className="relative">
+                                <div className="rounded-lg bg-white px-3 py-1 text-4xl dark:bg-gray-800">❤️</div>
+                                <div className="absolute right-0 bottom-0 flex h-6 w-6 items-center justify-center rounded-full bg-gray-900 text-xs font-bold text-white dark:bg-gray-100 dark:text-gray-900">
+                                    1
+                                </div>
+                            </div>
+                            <div className="relative">
+                                <div className="rounded-lg bg-white px-3 py-1 text-4xl dark:bg-gray-800">🚀</div>
+                                <div className="absolute right-0 bottom-0 flex h-6 w-6 items-center justify-center rounded-full bg-gray-900 text-xs font-bold text-white dark:bg-gray-100 dark:text-gray-900">
+                                    10
+                                </div>
+                            </div>
+                            <div className="relative">
+                                <div className="rounded-lg bg-white px-3 py-1 text-4xl dark:bg-gray-800">🤯</div>
+                                <div className="absolute right-0 bottom-0 flex h-6 w-6 items-center justify-center rounded-full bg-gray-900 text-xs font-bold text-white dark:bg-gray-100 dark:text-gray-900">
+                                    50
+                                </div>
+                            </div>
+                            <div className="relative">
+                                <div className="rounded-lg bg-white px-3 py-1 text-4xl dark:bg-gray-800">🔥</div>
+                                <div className="absolute right-0 bottom-0 flex h-6 w-6 items-center justify-center rounded-full bg-gray-900 text-xs font-bold text-white dark:bg-gray-100 dark:text-gray-900">
+                                    100
+                                </div>
+                            </div>
+                            <div className="relative">
+                                <div className="rounded-lg bg-white px-3 py-1 text-4xl dark:bg-gray-800">
+                                    <img src={TAYLOR_EMOJI_URL} alt="taylor" className="h-8 w-8" style={{ filter: 'brightness(0) saturate(100%)' }} />
+                                </div>
+                                <div className="absolute right-0 bottom-0 flex h-6 w-6 items-center justify-center rounded-full bg-gray-900 text-xs font-bold text-white dark:bg-gray-100 dark:text-gray-900">
+                                    ?
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -213,15 +218,13 @@ export default function Grid({ initialCells, cellTimestamps: initialTimestamps, 
                         }}
                     >
                         {Array.from({ length: GRID_SIZE }).map((_, position) => {
-                            const cooldown = cooldowns[position];
-                            const isDisabled = !!cooldown;
+                            const cellEmoji = cells[position];
 
-                            const getCellColor = (): string => {
-                                if (!cooldown) return 'border-gray-200 dark:border-gray-700';
-                                const progress = cooldown / cooldownSeconds;
-                                if (progress > 0.66) return 'border-red-500 dark:border-red-400';
-                                if (progress > 0.33) return 'border-orange-500 dark:border-orange-400';
-                                return 'border-yellow-500 dark:border-yellow-400';
+                            const renderEmoji = (): React.ReactNode => {
+                                if (cellEmoji === 'taylor') {
+                                    return <img src={TAYLOR_EMOJI_URL} alt="taylor" className="h-full w-full object-contain" />;
+                                }
+                                return cellEmoji || '';
                             };
 
                             return (
@@ -229,33 +232,31 @@ export default function Grid({ initialCells, cellTimestamps: initialTimestamps, 
                                     key={position}
                                     type="button"
                                     onClick={async () => {
-                                        if (!isDisabled) {
-                                            setCells((prev) => ({
-                                                ...prev,
-                                                [position]: selectedEmoji,
-                                            }));
-                                            setTimestamps((prev) => ({
-                                                ...prev,
-                                                [position]: Date.now(),
-                                            }));
+                                        const currentClickCount = (clickCounts[position] || 0) + 1;
+                                        setClickCounts((prev) => ({
+                                            ...prev,
+                                            [position]: currentClickCount,
+                                        }));
+                                        setTimestamps((prev) => ({
+                                            ...prev,
+                                            [position]: Date.now(),
+                                        }));
 
-                                            try {
-                                                await fetch(`/grid/${position}`, {
-                                                    method: 'PUT',
-                                                    headers: {
-                                                        'Content-Type': 'application/json',
-                                                        'X-CSRF-Token':
-                                                            (document.querySelector('meta[name="csrf-token"]') as HTMLMetaElement)?.content || '',
-                                                    },
-                                                    body: JSON.stringify({ emoji: selectedEmoji }),
-                                                });
-                                            } catch (error) {
-                                                console.error('Failed to update cell:', error);
-                                            }
+                                        try {
+                                            await fetch(`/grid/${position}`, {
+                                                method: 'PUT',
+                                                headers: {
+                                                    'Content-Type': 'application/json',
+                                                    'X-CSRF-Token':
+                                                        (document.querySelector('meta[name="csrf-token"]') as HTMLMetaElement)?.content || '',
+                                                },
+                                                body: JSON.stringify({ click: true }),
+                                            });
+                                        } catch (error) {
+                                            console.error('Failed to update cell:', error);
                                         }
                                     }}
-                                    disabled={isDisabled}
-                                    className={`flex h-full w-full items-center justify-center border-2 transition-all duration-100 ${getCellColor()} bg-white text-4xl hover:bg-gray-50 disabled:opacity-50 dark:border-gray-700 dark:bg-gray-800 dark:hover:bg-gray-700`}
+                                    className="flex h-full w-full items-center justify-center border-2 border-gray-200 bg-white text-4xl transition-all duration-100 hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-800 dark:hover:bg-gray-700"
                                 >
                                     <div
                                         className="relative flex h-full w-full items-center justify-center"
@@ -264,12 +265,7 @@ export default function Grid({ initialCells, cellTimestamps: initialTimestamps, 
                                             transition: 'opacity 100ms linear',
                                         }}
                                     >
-                                        {cells[position] || ''}
-                                        {cooldown && (
-                                            <div className="absolute right-0 bottom-0 flex h-5 w-5 items-center justify-center rounded-full bg-white text-xs font-bold text-gray-600 dark:bg-gray-800 dark:text-gray-300">
-                                                {cooldown}
-                                            </div>
-                                        )}
+                                        {renderEmoji()}
                                     </div>
                                 </button>
                             );
