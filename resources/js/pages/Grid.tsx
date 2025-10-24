@@ -411,13 +411,16 @@ export default function Grid({ initialCells, cellTimestamps: initialTimestamps, 
                                     </div>
                                     {clickCount > 0 && (
                                         <div
-                                            className="absolute right-0.5 bottom-0.5 hidden h-5 w-5 items-center justify-center rounded-full bg-gray-900 text-xs font-bold text-white sm:flex dark:bg-white dark:text-gray-900"
+                                            className="absolute right-0.5 bottom-0.5 hidden items-center justify-center rounded-full bg-gray-900 font-bold text-white md:flex dark:bg-white dark:text-gray-900"
                                             style={{
+                                                width: clickCount > 999 ? '24px' : '26px',
+                                                height: clickCount > 999 ? '24px' : '26px',
+                                                fontSize: clickCount > 999 ? '16px' : clickCount > 99 ? '10px' : '12px',
                                                 opacity: fadeOpacity[position] !== undefined ? fadeOpacity[position] : 1,
                                                 transition: 'opacity 100ms linear',
                                             }}
                                         >
-                                            {clickCount > 99 ? '99+' : clickCount}
+                                            {clickCount > 999 ? '🏆' : clickCount}
                                         </div>
                                     )}
                                 </button>
