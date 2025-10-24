@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Events\GridCellClicked;
 use App\Events\GridCellUpdated;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
@@ -55,6 +56,8 @@ class GridController extends Controller
             'timestamp' => $timestamps[$position],
             'clickCount' => $clickCounts[$position],
         ]))->toOthers();
+
+        broadcast(new GridCellClicked($position, $clickCounts[$position]));
 
         return response()->json(['success' => true, 'clickCount' => $clickCounts[$position]]);
     }

@@ -14,6 +14,38 @@ const GRID_SIZE = GRID_COLUMNS * GRID_ROWS;
 const EMOJI_FADE_DURATION = 60000;
 const TAYLOR_EMOJI_URL = 'https://emoji.slack-edge.com/T030VF85W/taylor/0f1e49b19df93f08.png';
 
+const LEVEL_THRESHOLDS = [
+    { min: 1, max: 9 },
+    { min: 10, max: 49 },
+    { min: 50, max: 99 },
+    { min: 100, max: 499 },
+    { min: 500, max: Infinity },
+];
+
+const getProgressToNextLevel = (clickCount: number): number => {
+    if (clickCount === 0) return 0;
+    for (const level of LEVEL_THRESHOLDS) {
+        if (clickCount >= level.min && clickCount < level.max) {
+            const progress = (clickCount - level.min) / (level.max - level.min);
+            return Math.min(progress, 1);
+        }
+    }
+    return 1;
+};
+
+const getShakeIntensity = (progress: number): string => {
+    if (progress > 0.66) return 'animate-shake-heavy';
+    if (progress > 0.33) return 'animate-shake-medium';
+    return 'animate-shake-light';
+};
+
+const getGlowIntensity = (progress: number): string => {
+    if (progress > 0.66) return 'animate-pulse-glow-large';
+    if (progress > 0.33) return 'animate-pulse-glow-medium';
+    if (progress > 0) return 'animate-pulse-glow-small';
+    return '';
+};
+
 interface Props {
     initialCells: Record<number, string>;
     cellTimestamps: Record<number, number>;
@@ -25,6 +57,8 @@ export default function Grid({ initialCells, cellTimestamps: initialTimestamps, 
     const [timestamps, setTimestamps] = useState<Record<number, number>>(initialTimestamps);
     const [clickCounts, setClickCounts] = useState<Record<number, number>>(initialClickCounts);
     const [fadeOpacity, setFadeOpacity] = useState<Record<number, number>>({});
+    const [shakeKey, setShakeKey] = useState<Record<number, number>>({});
+    const [pulsingCells, setPulsingCells] = useState<Record<number, number>>({});
 
     useEffect(() => {
         const interval = setInterval(() => {
@@ -88,6 +122,24 @@ export default function Grid({ initialCells, cellTimestamps: initialTimestamps, 
             ...prev,
             [data.position]: data.clickCount,
         }));
+    });
+
+    useEchoPublic('grid', '.cell-clicked', (data: { position: number; clickCount: number }) => {
+        setShakeKey((prev) => ({
+            ...prev,
+            [data.position]: (prev[data.position] || 0) + 1,
+        }));
+        setPulsingCells((prev) => ({
+            ...prev,
+            [data.position]: data.clickCount,
+        }));
+
+        setTimeout(() => {
+            setPulsingCells((prev) => ({
+                ...prev,
+                [data.position]: 0,
+            }));
+        }, 1500);
     });
 
     return (
@@ -219,6 +271,10 @@ export default function Grid({ initialCells, cellTimestamps: initialTimestamps, 
                     >
                         {Array.from({ length: GRID_SIZE }).map((_, position) => {
                             const cellEmoji = cells[position];
+                            const clickCount = clickCounts[position] || 0;
+                            const shakeKeyValue = shakeKey[position] || 0;
+                            const pulseClickCount = pulsingCells[position] || 0;
+                            const progress = getProgressToNextLevel(pulseClickCount);
 
                             const renderEmoji = (): React.ReactNode => {
                                 if (cellEmoji === 'taylor') {
@@ -237,10 +293,25 @@ export default function Grid({ initialCells, cellTimestamps: initialTimestamps, 
                                             ...prev,
                                             [position]: currentClickCount,
                                         }));
+                                        setShakeKey((prev) => ({
+                                            ...prev,
+                                            [position]: (prev[position] || 0) + 1,
+                                        }));
+                                        setPulsingCells((prev) => ({
+                                            ...prev,
+                                            [position]: currentClickCount,
+                                        }));
                                         setTimestamps((prev) => ({
                                             ...prev,
                                             [position]: Date.now(),
                                         }));
+
+                                        setTimeout(() => {
+                                            setPulsingCells((prev) => ({
+                                                ...prev,
+                                                [position]: 0,
+                                            }));
+                                        }, 1500);
 
                                         try {
                                             await fetch(`/grid/${position}`, {
@@ -259,7 +330,8 @@ export default function Grid({ initialCells, cellTimestamps: initialTimestamps, 
                                     className="flex h-full w-full items-center justify-center border-2 border-gray-200 bg-white text-4xl transition-all duration-100 hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-800 dark:hover:bg-gray-700"
                                 >
                                     <div
-                                        className="relative flex h-full w-full items-center justify-center"
+                                        key={`shake-${shakeKeyValue}`}
+                                        className={`relative flex h-full w-full items-center justify-center ${shakeKeyValue > 0 ? getShakeIntensity(getProgressToNextLevel(clickCount)) : ''} ${pulseClickCount > 0 ? getGlowIntensity(progress) : ''}`}
                                         style={{
                                             opacity: fadeOpacity[position] !== undefined ? fadeOpacity[position] : 1,
                                             transition: 'opacity 100ms linear',
