@@ -59,7 +59,7 @@ const Raindrop = ({ emoji, delay, left }: RaindropProps) => {
             style={{
                 left: `${left}%`,
                 top: '-100px',
-                animation: `fall 15s linear ${delay}s forwards`,
+                animation: `fall 20s linear ${delay}s forwards`,
                 zIndex: 9999,
             }}
         >
@@ -174,15 +174,15 @@ export default function Grid({ initialCells, cellTimestamps: initialTimestamps, 
         setRainEmoji(data.emoji);
         const drops: RaindropProps[] = Array.from({ length: 50 }).map(() => ({
             emoji: data.emoji,
-            delay: Math.random() * 15,
+            delay: Math.random() * 30,
             left: Math.random() * 100,
         }));
         setRaindrops(drops);
 
         setTimeout(() => {
-            setRainEmoji(null);
             setRaindrops([]);
-        }, 15000);
+            setRainEmoji(null);
+        }, 50000);
     });
 
     return (
@@ -190,7 +190,15 @@ export default function Grid({ initialCells, cellTimestamps: initialTimestamps, 
             <style>
                 {`
                     @keyframes fall {
-                        to {
+                        0% {
+                            transform: translateY(0);
+                            opacity: 1;
+                        }
+                        85% {
+                            transform: translateY(100vh);
+                            opacity: 1;
+                        }
+                        100% {
                             transform: translateY(100vh);
                             opacity: 0;
                         }
