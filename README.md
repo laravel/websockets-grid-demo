@@ -2,12 +2,23 @@
 
 A modern, real-time collaborative emoji grid showcasing **Laravel 12**, **React 19**, **Inertia.js**, and **Laravel Reverb** broadcasting capabilities. This demo demonstrates best practices for building real-time collaborative applications with Laravel.
 
+## ☁️ Laravel Cloud Deployment
+
+This application is designed to be deployed on **Laravel Cloud**. You'll need to provision:
+
+- **🗄️ Database** - Required for sessions, cache table, and avoiding log errors (even though grid data uses cache)
+- **💾 Cache** - Required for grid state, user presence tracking, and session storage
+- **⚡ Queue (or Queue Cluster)** - Required for background job processing and scheduled tasks
+- **🌐 WebSockets (Laravel Reverb)** - Required for real-time broadcasting functionality
+
+> **Note**: While the grid itself uses cache storage, a database is still required to prevent errors in Laravel's session and cache drivers. The database cache driver writes to a `cache` table created by migrations.
+
 ## ✨ Features
 
 - 🎯 **10×10 Interactive Grid** - Click cells to level up emojis through 5 stages
 - 👥 **Live User Count** - See how many artisans are online in real-time
 - ⚡ **Real-Time Sync** - Instant updates via WebSockets with optimistic UI
-- 🎭 **Progressive Emoji Levels** - ❤️ → 🚀 → 🤯 → 🔥 → Taylor's face
+- 🎭 **Progressive Emoji Levels** - ❤️ → 🚀 → 🤯 → 🔥 → Secret Emoji
 - 🌧️ **Emoji Rain** - Fill the entire grid with one emoji to trigger a celebration
 - 💾 **Persistent State** - Grid state and click counts survive page refreshes
 - 🔓 **Public Access** - No authentication required for demo purposes
@@ -31,11 +42,20 @@ All Other Browsers (Echo) → UI Update
 
 ## 📋 Requirements
 
+**Local Development:**
+
 - PHP 8.4+
 - Node.js 18+
 - Composer & npm
 - Laravel 12
 - SQLite (or MySQL/PostgreSQL)
+
+**Production (Laravel Cloud):**
+
+- Database (MySQL/PostgreSQL recommended)
+- Cache service
+- Queue or Queue Cluster
+- WebSockets (Laravel Reverb)
 
 ## 🚀 Quick Start
 
@@ -98,7 +118,7 @@ Visit http://localhost:8000 (or the port shown in your terminal)
     - 10 clicks: 🚀
     - 50 clicks: 🤯
     - 100 clicks: 🔥
-    - 500 clicks: Taylor's face 🧑
+    - 500 clicks: Special Emoij 👀
 3. **Watch the counter** in the center 2×2 area to see live user count
 4. **Open multiple tabs** to see real-time collaboration
 5. **Fill the entire grid** with one emoji type to trigger emoji rain! 🌧️
@@ -274,6 +294,18 @@ php artisan tinker
 | Animations feel delayed    | Ensure `toOthers()` is used in broadcasts             |
 | WebSocket connection fails | Check `BROADCAST_CONNECTION=reverb` in `.env`         |
 | Axios errors               | Verify CSRF token meta tag in `app.blade.php`         |
+| Log errors (no database)   | Database is required even with cache - run migrations |
+
+**Why Database is Required:**
+
+Even though the grid uses cache for storage, Laravel requires a database for:
+
+- Session management (database driver)
+- Cache table (database cache driver uses this)
+- Queue table (for job tracking)
+- Migrations table (Laravel's migration tracking)
+
+Without a database, you may see errors in logs related to sessions and cache operations, even if the application appears to work correctly.
 
 ## 🎯 Best Practices Demonstrated
 
