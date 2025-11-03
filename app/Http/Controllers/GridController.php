@@ -68,7 +68,7 @@ class GridController extends Controller
             'clickCount' => $clickCounts[$position],
         ]))->toOthers();
 
-        broadcast(new GridCellClicked($position, $clickCounts[$position]));
+        broadcast(new GridCellClicked($position, $clickCounts[$position]))->toOthers();
 
         if ($this->isGridUniform($cells) && $this->canTriggerRain($emoji)) {
             $this->setRainCooldown($emoji);
