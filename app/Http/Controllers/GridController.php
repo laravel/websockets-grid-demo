@@ -29,19 +29,15 @@ class GridController extends Controller
         $timestamps = Cache::get(self::GRID_TIMESTAMPS_KEY, []);
         $clickCounts = Cache::get(self::GRID_CLICK_COUNTS_KEY, []);
 
+        $presenceService = App::make(UserPresenceService::class);
+        $activeUserCount = $presenceService->getActiveUserCount();
+
         return Inertia::render('Grid', [
             'initialCells' => $cells,
             'cellTimestamps' => $timestamps,
             'cellClickCounts' => $clickCounts,
+            'initialActiveUserCount' => $activeUserCount,
         ]);
-    }
-
-    public function getUserCount(): \Illuminate\Http\JsonResponse
-    {
-        $presenceService = App::make(UserPresenceService::class);
-        $count = $presenceService->getActiveUserCount();
-
-        return response()->json(['count' => $count]);
     }
 
     public function update(Request $request, int $position): \Illuminate\Http\JsonResponse

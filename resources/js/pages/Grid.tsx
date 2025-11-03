@@ -1,5 +1,6 @@
 import { Head } from '@inertiajs/react';
 import { useEchoPublic } from '@laravel/echo-react';
+import axios from 'axios';
 import { useEffect, useState } from 'react';
 
 declare global {
@@ -72,9 +73,15 @@ interface Props {
     initialCells: Record<number, string>;
     cellTimestamps: Record<number, number>;
     cellClickCounts: Record<number, number>;
+    initialActiveUserCount: number;
 }
 
-export default function Grid({ initialCells, cellTimestamps: initialTimestamps, cellClickCounts: initialClickCounts }: Props) {
+export default function Grid({
+    initialCells,
+    cellTimestamps: initialTimestamps,
+    cellClickCounts: initialClickCounts,
+    initialActiveUserCount,
+}: Props) {
     const [cells, setCells] = useState<Record<number, string | null>>(initialCells);
     const [timestamps, setTimestamps] = useState<Record<number, number>>(initialTimestamps);
     const [clickCounts, setClickCounts] = useState<Record<number, number>>(initialClickCounts);
@@ -83,15 +90,7 @@ export default function Grid({ initialCells, cellTimestamps: initialTimestamps, 
     const [pulsingCells, setPulsingCells] = useState<Record<number, number>>({});
     const [rainEmoji, setRainEmoji] = useState<string | null>(null);
     const [raindrops, setRaindrops] = useState<RaindropProps[]>([]);
-    const [activeUserCount, setActiveUserCount] = useState<number>(0);
-
-    useEffect(() => {
-        // Fetch initial user count
-        fetch('/api/user-count')
-            .then((response) => response.json())
-            .then((data) => setActiveUserCount(data.count))
-            .catch((error) => console.error('Failed to fetch user count:', error));
-    }, []);
+    const [activeUserCount, setActiveUserCount] = useState<number>(initialActiveUserCount);
 
     useEffect(() => {
         const interval = setInterval(() => {
@@ -125,14 +124,7 @@ export default function Grid({ initialCells, cellTimestamps: initialTimestamps, 
                     if (ageMs > EMOJI_FADE_DURATION && updated[parseInt(pos)]) {
                         updated[parseInt(pos)] = null;
 
-                        const csrfToken = document.querySelector('meta[name="csrf-token"]') as HTMLMetaElement;
-                        fetch(`/grid/${pos}/clear`, {
-                            method: 'DELETE',
-                            headers: {
-                                'Content-Type': 'application/json',
-                                'X-CSRF-Token': csrfToken?.content || '',
-                            },
-                        }).catch((error) => console.error('Failed to clear cell:', error));
+                        axios.delete(`/grid/${pos}/clear`).catch((error) => console.error('Failed to clear cell:', error));
                     }
                 });
                 return updated;
@@ -429,15 +421,7 @@ export default function Grid({ initialCells, cellTimestamps: initialTimestamps, 
                                         }, 1500);
 
                                         try {
-                                            await fetch(`/grid/${position}`, {
-                                                method: 'PUT',
-                                                headers: {
-                                                    'Content-Type': 'application/json',
-                                                    'X-CSRF-Token':
-                                                        (document.querySelector('meta[name="csrf-token"]') as HTMLMetaElement)?.content || '',
-                                                },
-                                                body: JSON.stringify({ click: true }),
-                                            });
+                                            await axios.put(`/grid/${position}`, { click: true });
                                         } catch (error) {
                                             console.error('Failed to update cell:', error);
                                         }
