@@ -1,42 +1,67 @@
-# 🚀 Emoji Grid - Real-Time Collaborative Demo
+# 🎨 Laravel Reverb Grid - Real-Time Collaborative Demo
 
-A modern, real-time collaborative emoji grid built with **Laravel 12**, **React 19**, and **Laravel Reverb** using the `ShouldBroadcastNow` pattern for immediate event broadcasting.
+A modern, real-time collaborative emoji grid showcasing **Laravel 12**, **React 19**, **Inertia.js**, and **Laravel Reverb** broadcasting capabilities. This demo demonstrates best practices for building real-time collaborative applications with Laravel.
 
 ## ✨ Features
 
-- 🎨 **30×30 Interactive Grid** - Full-width, responsive emoji canvas
-- ⚡ **Real-Time Sync** - Updates broadcast instantly via WebSockets
-- 💾 **Persistent Data** - Grid state survives page refreshes (cached)
-- 🔓 **Public Access** - No authentication required for demo
-- 📡 **Zero-Latency Broadcasting** - Uses `ShouldBroadcastNow` for immediate dispatch
-- 🎯 **Clean Architecture** - Minimal, demo-friendly code
+- 🎯 **10×10 Interactive Grid** - Click cells to level up emojis through 5 stages
+- 👥 **Live User Count** - See how many artisans are online in real-time
+- ⚡ **Real-Time Sync** - Instant updates via WebSockets with optimistic UI
+- 🎭 **Progressive Emoji Levels** - ❤️ → 🚀 → 🤯 → 🔥 → Taylor's face
+- 🌧️ **Emoji Rain** - Fill the entire grid with one emoji to trigger a celebration
+- 💾 **Persistent State** - Grid state and click counts survive page refreshes
+- 🔓 **Public Access** - No authentication required for demo purposes
+- 📡 **Optimized Broadcasting** - Uses `toOthers()` to prevent duplicate updates
+- 🎨 **Dark Mode Support** - Automatic theme switching
 
 ## 🏗️ Architecture
 
 ```
-Browser → React Component → fetch() → Laravel Controller →
+Browser → React Component → Axios → Laravel Controller →
 Cache Update → Event Dispatch → Reverb WebSocket →
-All Browsers (useEchoPublic hook) → UI Update
+All Other Browsers (Echo) → UI Update
 ```
 
-**Broadcasting Pattern**: `ShouldBroadcastNow`
+**Key Broadcasting Patterns:**
 
-- Executes synchronously (no queue needed)
-- Ideal for real-time UI updates
-- No background workers required
-- Perfect for demos
+- **Optimistic UI Updates** - Immediate local state changes before server confirmation
+- **`toOthers()` Pattern** - Broadcasts exclude the originating user
+- **Axios + Socket ID** - Automatic `X-Socket-ID` header for proper `toOthers()` behavior
+- **Presence Tracking** - Session-based user tracking with automatic cleanup
 
 ## 📋 Requirements
 
 - PHP 8.4+
 - Node.js 18+
-- SQLite (or MySQL/PostgreSQL)
-- Laravel 12
 - Composer & npm
+- Laravel 12
+- SQLite (or MySQL/PostgreSQL)
 
 ## 🚀 Quick Start
 
-### One Command (All Services)
+### 1. Install Dependencies
+
+```bash
+composer install
+npm install
+```
+
+### 2. Environment Setup
+
+```bash
+cp .env.example .env
+php artisan key:generate
+```
+
+### 3. Run Migrations
+
+```bash
+php artisan migrate
+```
+
+### 4. Start Development Servers
+
+**Option A: One Command (Recommended)**
 
 ```bash
 composer run dev
@@ -48,7 +73,7 @@ This starts:
 - Vite dev server (http://localhost:5173)
 - Reverb WebSocket (ws://localhost:8080)
 
-### Or Manual Start (3 terminals)
+**Option B: Manual Start (3 terminals)**
 
 ```bash
 # Terminal 1: Laravel
@@ -61,164 +86,170 @@ npm run dev
 php artisan reverb:start
 ```
 
-## 🎮 Usage
+### 5. Open Application
 
-1. Open http://localhost:8000
-2. Select an emoji from the dropdown (🚀, ❤️, 🤯, 🔥)
-3. Click any cell in the grid
-4. Watch the emoji appear instantly
-5. Open another tab to see real-time collaboration
-6. Refresh the page to verify persistence
+Visit http://localhost:8000 (or the port shown in your terminal)
+
+## 🎮 How to Use
+
+1. **Click any cell** to place an emoji (starts at ❤️ level 1)
+2. **Keep clicking** the same cell to level it up:
+    - 1 click: ❤️
+    - 10 clicks: 🚀
+    - 50 clicks: 🤯
+    - 100 clicks: 🔥
+    - 500 clicks: Taylor's face 🧑
+3. **Watch the counter** in the center 2×2 area to see live user count
+4. **Open multiple tabs** to see real-time collaboration
+5. **Fill the entire grid** with one emoji type to trigger emoji rain! 🌧️
 
 ## 📁 Project Structure
 
 ```
 app/
+├── Broadcasting/
+│   └── GridPresence.php           # Presence channel authorization
 ├── Events/
-│   └── GridCellUpdated.php        # ShouldBroadcastNow event
-└── Http/
-    └── Controllers/
-        └── GridController.php      # Main logic
+│   ├── GridCellClicked.php        # Shake animation event
+│   ├── GridCellUpdated.php        # Cell emoji update event
+│   ├── GridRainStarted.php        # Celebration rain event
+│   └── UserCountUpdated.php       # Active user count event
+├── Http/
+│   ├── Controllers/
+│   │   └── GridController.php     # Main grid logic
+│   └── Middleware/
+│       └── TrackActiveUsers.php   # Session-based user tracking
+└── Services/
+    └── UserPresenceService.php    # User presence management
 
 resources/
 ├── js/
-│   ├── app.tsx                     # Echo configuration
+│   ├── app.tsx                    # Axios + Echo configuration
 │   └── pages/
-│       └── Grid.tsx                # React component
+│       └── Grid.tsx               # React grid component
 └── css/
-    └── app.css                     # Styling
-
-config/
-└── broadcasting.php                # Broadcasting configuration
+    └── app.css                    # Tailwind styling
 
 routes/
-└── web.php                         # API routes
+├── web.php                        # Web routes
+└── channels.php                   # Broadcasting channel definitions
 ```
 
-## 🔑 Key Files Explained
+## 🔑 Key Implementation Details
 
-### Event: GridCellUpdated (`app/Events/GridCellUpdated.php`)
-
-```php
-implements ShouldBroadcastNow  // ← KEY: Dispatch immediately
-```
-
-Methods:
-
-- `broadcastOn()`: Broadcast on public 'grid' channel
-- `broadcastAs()`: Event name 'cell-updated'
-- `broadcastWith()`: Send { position, emoji }
-
-### Controller: GridController (`app/Http/Controllers/GridController.php`)
-
-**GET /**: Returns cached grid state  
-**PUT /grid/{position}**: Updates emoji, saves cache, broadcasts event
-
-```php
-GridCellUpdated::dispatch([...])->toOthers();  // Send to other clients
-```
-
-### Component: Grid (`resources/js/pages/Grid.tsx`)
-
-Uses `useEchoPublic` hook to listen for broadcasts:
+### 1. Axios Configuration with Echo (`resources/js/app.tsx`)
 
 ```typescript
-useEchoPublic(
-    'grid',              // Channel
-    'cell-updated',      // Event name
-    (data) => { ... }    // Update state
-)
+// Automatically attach Socket ID to Axios requests
+axios.interceptors.request.use((config) => {
+    if (window.Echo && typeof window.Echo.socketId === 'function') {
+        config.headers['X-Socket-ID'] = window.Echo.socketId();
+    }
+    return config;
+});
+```
+
+### 2. Broadcasting with `toOthers()` (`app/Http/Controllers/GridController.php`)
+
+```php
+// Broadcast to everyone except the person who clicked
+broadcast(new GridCellUpdated([...]))->toOthers();
+broadcast(new GridCellClicked(...))->toOthers();
+```
+
+### 3. Optimistic UI Updates (`resources/js/pages/Grid.tsx`)
+
+```typescript
+// Update local state immediately for instant feedback
+setCells((prev) => ({ ...prev, [position]: newEmoji }));
+
+// Then send to server
+await axios.put(`/grid/${position}`, { click: true });
+```
+
+### 4. User Presence Tracking
+
+- **Session-based**: Each user gets a unique UUID stored in session
+- **Cache storage**: Active users stored in cache with timestamps
+- **Automatic cleanup**: Scheduled task removes inactive users every minute
+- **Real-time updates**: Broadcasts user count changes to all clients
+
+## 📊 Event Flow Diagram
+
+```
+User Clicks Cell
+    ↓
+1. Optimistic UI Update (instant)
+    ↓
+2. Axios PUT with X-Socket-ID header
+    ↓
+3. Laravel updates cache + click count
+    ↓
+4. Broadcast GridCellUpdated →toOthers()
+    ↓
+5. Broadcast GridCellClicked →toOthers()
+    ↓
+6. Check if grid is uniform (rain trigger)
+    ↓
+7. Other browsers receive via WebSocket
+    ↓
+8. React updates with animations
 ```
 
 ## 🔧 Configuration
 
-### Environment (.env)
+### Environment Variables (.env)
 
 ```bash
-BROADCAST_CONNECTION=reverb    # Use Reverb
-QUEUE_CONNECTION=database      # Cache driver (not used with ShouldBroadcastNow)
-REVERB_HOST=127.0.0.1         # Local dev
-REVERB_PORT=8080              # WebSocket port
-REVERB_SCHEME=http            # http for local, https for production
+BROADCAST_CONNECTION=reverb
+REVERB_APP_ID=your-app-id
+REVERB_APP_KEY=your-app-key
+REVERB_APP_SECRET=your-app-secret
+REVERB_HOST=127.0.0.1
+REVERB_PORT=8080
+REVERB_SCHEME=http
+
+VITE_REVERB_APP_KEY="${REVERB_APP_KEY}"
+VITE_REVERB_HOST="${REVERB_HOST}"
+VITE_REVERB_PORT="${REVERB_PORT}"
+VITE_REVERB_SCHEME="${REVERB_SCHEME}"
 ```
 
-### Broadcasting (config/broadcasting.php)
+### Broadcasting Configuration (`config/broadcasting.php`)
 
-```php
-'default' => env('BROADCAST_CONNECTION', 'null'),
-'connections' => [
-    'reverb' => [
-        'driver' => 'reverb',
-        'key' => env('REVERB_APP_KEY'),
-        // ...
-    ],
-]
-```
+Already configured for Reverb! No changes needed.
 
-### Echo Setup (resources/js/app.tsx)
+## 🧪 Testing Real-Time Features
 
-```typescript
-import { configureEcho } from '@laravel/echo-react';
-
-configureEcho({
-    broadcaster: 'reverb',
-});
-```
-
-## 📊 How It Works
-
-### Request Flow
-
-```
-1. User clicks cell with emoji selected
-2. React optimistically updates local state (instant visual feedback)
-3. fetch() sends PUT /grid/{position}
-4. Laravel validates, updates cache, dispatches event
-5. Reverb broadcasts immediately (ShouldBroadcastNow)
-6. Other browsers receive via WebSocket
-7. useEchoPublic hook receives data
-8. React updates, UI shows emoji
-9. Page refresh: Cache loads all previous emojis
-```
-
-### Latency Breakdown
-
-| Step                    | Time         |
-| ----------------------- | ------------ |
-| Optimistic UI           | ~0ms         |
-| Network to server       | ~5-10ms      |
-| Cache update + dispatch | ~5ms         |
-| Reverb broadcast        | ~0ms (sync)  |
-| Network to client       | ~5-10ms      |
-| React update            | ~2-3ms       |
-| **Total**               | **~20-30ms** |
-
-## 🧪 Testing
-
-### Test 1: Real-Time Collaboration
+### Test 1: Multi-Client Sync
 
 ```bash
-# Terminal 1: curl request to add emoji
-curl -X PUT http://localhost:8000/grid/42 \
-  -H "Content-Type: application/json" \
-  -d '{"emoji":"🚀"}'
-
-# Should see emoji appear in browser instantly
+# Open app in 2 browser tabs
+# Click a cell in tab 1
+# Should appear instantly in tab 2 with animations
 ```
 
-### Test 2: Persistence
+### Test 2: User Count Updates
 
 ```bash
-# Add emoji, refresh page
-# Emoji should still be there (loaded from cache)
+# Open app in multiple tabs/browsers
+# Watch center display update with "X artisans online"
+# Close tabs and see count decrease after ~5 minutes
 ```
 
-### Test 3: Multi-Client Sync
+### Test 3: Emoji Rain
 
 ```bash
-# Open in 2 browser tabs
-# Add emoji in tab 1
-# Should appear instantly in tab 2 (no refresh needed)
+# Click all 96 clickable cells (excluding center 4) to the same emoji
+# Watch the emoji rain celebration trigger!
+```
+
+### Test 4: Persistence
+
+```bash
+# Click various cells to add emojis
+# Refresh the page
+# All emojis and click counts should persist
 ```
 
 ### Clear Grid Data
@@ -227,81 +258,92 @@ curl -X PUT http://localhost:8000/grid/42 \
 php artisan cache:clear
 # or
 php artisan tinker
-Cache::forget('emoji_grid')
+>>> Cache::forget('emoji_grid')
+>>> Cache::forget('emoji_grid_click_counts')
+>>> Cache::forget('emoji_grid_timestamps')
+>>> Cache::forget('active_users')
 ```
 
 ## 🐛 Troubleshooting
 
-| Problem                    | Solution                                        |
-| -------------------------- | ----------------------------------------------- |
-| Emojis not persisting      | Run `php artisan migrate` to create cache table |
-| Real-time not working      | Check `php artisan reverb:start` is running     |
-| WebSocket connection fails | Verify `BROADCAST_CONNECTION=reverb` in `.env`  |
-| 404 on PUT endpoint        | Restart Laravel server                          |
-| Browser shows blank page   | Check browser console for JS errors             |
+| Problem                    | Solution                                              |
+| -------------------------- | ----------------------------------------------------- |
+| Emojis not persisting      | Run `php artisan migrate` for cache table             |
+| Real-time not working      | Verify `php artisan reverb:start` is running          |
+| User count not updating    | Check middleware is registered in `bootstrap/app.php` |
+| Animations feel delayed    | Ensure `toOthers()` is used in broadcasts             |
+| WebSocket connection fails | Check `BROADCAST_CONNECTION=reverb` in `.env`         |
+| Axios errors               | Verify CSRF token meta tag in `app.blade.php`         |
 
-## 📚 Documentation
+## 🎯 Best Practices Demonstrated
 
-See included files for detailed information:
+### 1. **Inertia.js Props**
 
-- **QUICK_START.md** - Fast setup guide
-- **BROADCASTING_SETUP.md** - Broadcasting architecture
-- **ARCHITECTURE.md** - Visual diagrams and data flow
-- **IMPLEMENTATION_SUMMARY.md** - Complete technical overview
-- **FIXES_APPLIED.md** - Historical fixes and changes
+- ✅ Pass initial data via props (no separate API call on load)
+- ✅ Keep routes in `web.php` (not `api.php`)
 
-## 🚀 Performance
+### 2. **Broadcasting**
 
-- **Startup**: ~2s (Laravel + Vite)
-- **Grid load**: ~50ms (cache read)
-- **Update broadcast**: ~20-30ms (end-to-end)
+- ✅ Use `toOthers()` to prevent duplicate updates
+- ✅ Axios with automatic `X-Socket-ID` header
+- ✅ Optimistic UI updates for instant feedback
+
+### 3. **User Presence**
+
+- ✅ Session-based tracking (no database needed)
+- ✅ Cache storage for performance
+- ✅ Scheduled cleanup of inactive users
+
+### 4. **Code Quality**
+
+- ✅ Laravel Pint for consistent formatting
+- ✅ TypeScript for type safety
+- ✅ Service classes for business logic
+
+## 📈 Performance
+
+- **Grid Load**: ~50ms (cache read)
+- **Update Latency**: ~20-30ms end-to-end
 - **Memory**: ~50MB (React + Echo)
-- **WebSocket overhead**: ~1KB per message
+- **WebSocket**: ~1KB per message
+- **Clickable Cells**: 96 (10×10 grid minus center 4)
 
 ## 🔐 Security
 
-- ✅ CSRF protection on PUT endpoint
-- ✅ Emoji validation (whitelist)
-- ✅ No authentication required (public demo)
-- ✅ Cache-based storage (no database exposures)
+- ✅ CSRF protection on all mutations
+- ✅ Axios automatic CSRF token handling
+- ✅ Click count validation
+- ✅ Position validation (0-99)
+- ✅ No authentication (public demo)
+- ✅ Cache-based storage (no SQL injection risk)
 
-## 📈 Future Enhancements
+## 📚 Laravel Versions
 
-- [ ] User authentication + profile tracking
-- [ ] Emoji reactions/voting system
-- [ ] Multiple grid rooms
-- [ ] Undo/redo functionality
-- [ ] Animation effects
-- [ ] Real-time cursor positions
-- [ ] Chat integration
-- [ ] Rate limiting per user
+- **Laravel Framework**: 12.x
+- **Laravel Reverb**: 1.x
+- **Inertia.js**: 2.x
+- **Laravel Echo**: 2.x
+- **React**: 19.x
+- **Tailwind CSS**: 4.x
 
-## 🎯 Use Cases
+## 🎓 Learning Resources
 
-**Perfect for:**
+This demo is perfect for learning:
 
-- Live demos of real-time Laravel features
-- Learning Reverb + Echo + broadcasting patterns
-- Collaborative whiteboard-style apps
-- Teaching WebSocket implementation
-- Testing broadcasting infrastructure
+- **Real-time Laravel features** with Reverb
+- **Broadcasting patterns** with `toOthers()`
+- **Optimistic UI updates** in React
+- **Inertia.js best practices** for SPAs
+- **WebSocket implementation** with Echo
+- **User presence tracking** without authentication
+- **Axios integration** with Laravel Echo
 
-## 📝 Tech Stack
-
-- **Backend**: Laravel 12
-- **Frontend**: React 19 + TypeScript
-- **Real-Time**: Laravel Reverb
-- **Broadcasting**: WebSocket via Echo
-- **Styling**: Tailwind CSS 4
-- **Caching**: Database cache driver
-- **Validation**: Laravel form requests
-
-## 📖 Resources
+## 📖 Further Reading
 
 - [Laravel Broadcasting Docs](https://laravel.com/docs/12.x/broadcasting)
 - [Laravel Reverb Docs](https://laravel.com/docs/12.x/reverb)
-- [Laravel Echo](https://laravel.com/docs/12.x/broadcasting#client-side-installation)
-- [ShouldBroadcastNow Interface](https://laravel.com/docs/12.x/broadcasting#broadcast-queue)
+- [Inertia.js Docs](https://inertiajs.com)
+- [Laravel Echo Docs](https://laravel.com/docs/12.x/broadcasting#client-side-installation)
 
 ## 📄 License
 
@@ -309,12 +351,12 @@ MIT
 
 ## 👤 Author
 
-Built as a demo for Laravel Reverb WebSocket broadcasting with real-time React applications.
+Built as a comprehensive demo for Laravel Reverb WebSocket broadcasting with Inertia.js and React.
 
 ---
 
-**Status**: ✅ Ready for demo  
-**Last Updated**: October 22, 2025  
-**Framework Versions**: Laravel 12, React 19, Reverb 1.0
+**Status**: ✅ Production Ready  
+**Last Updated**: November 2, 2025  
+**Framework Versions**: Laravel 12, React 19, Inertia 2, Reverb 1
 
 Happy coding! 🚀
