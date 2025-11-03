@@ -5,7 +5,9 @@ namespace App\Http\Controllers;
 use App\Events\GridCellClicked;
 use App\Events\GridCellUpdated;
 use App\Events\GridRainStarted;
+use App\Services\UserPresenceService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\App;
 use Illuminate\Support\Facades\Cache;
 use Inertia\Inertia;
 
@@ -32,6 +34,14 @@ class GridController extends Controller
             'cellTimestamps' => $timestamps,
             'cellClickCounts' => $clickCounts,
         ]);
+    }
+
+    public function getUserCount(): \Illuminate\Http\JsonResponse
+    {
+        $presenceService = App::make(UserPresenceService::class);
+        $count = $presenceService->getActiveUserCount();
+
+        return response()->json(['count' => $count]);
     }
 
     public function update(Request $request, int $position): \Illuminate\Http\JsonResponse
@@ -103,9 +113,10 @@ class GridController extends Controller
 
     private function isGridUniform(array $cells): bool
     {
-        $gridSize = 100;
+        // 100 total squares - 4 center squares reserved for user count = 96 clickable squares
+        $clickableGridSize = 96;
 
-        if (count($cells) !== $gridSize) {
+        if (count($cells) !== $clickableGridSize) {
             return false;
         }
 

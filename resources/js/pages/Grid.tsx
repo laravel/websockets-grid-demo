@@ -83,6 +83,15 @@ export default function Grid({ initialCells, cellTimestamps: initialTimestamps, 
     const [pulsingCells, setPulsingCells] = useState<Record<number, number>>({});
     const [rainEmoji, setRainEmoji] = useState<string | null>(null);
     const [raindrops, setRaindrops] = useState<RaindropProps[]>([]);
+    const [activeUserCount, setActiveUserCount] = useState<number>(0);
+
+    useEffect(() => {
+        // Fetch initial user count
+        fetch('/api/user-count')
+            .then((response) => response.json())
+            .then((data) => setActiveUserCount(data.count))
+            .catch((error) => console.error('Failed to fetch user count:', error));
+    }, []);
 
     useEffect(() => {
         const interval = setInterval(() => {
@@ -183,6 +192,10 @@ export default function Grid({ initialCells, cellTimestamps: initialTimestamps, 
             setRaindrops([]);
             setRainEmoji(null);
         }, 50000);
+    });
+
+    useEchoPublic('grid-active-users', '.user-count-updated', (data: { count: number }) => {
+        setActiveUserCount(data.count);
     });
 
     return (
@@ -334,6 +347,31 @@ export default function Grid({ initialCells, cellTimestamps: initialTimestamps, 
                         }}
                     >
                         {Array.from({ length: GRID_SIZE }).map((_, position) => {
+                            // Check if this position is in the center 2x2 area (positions 44, 45, 54, 55)
+                            const isCenterArea = position === 44 || position === 45 || position === 54 || position === 55;
+
+                            if (isCenterArea && position === 44) {
+                                // Show user count spanning all 4 center squares
+                                return (
+                                    <div
+                                        key={position}
+                                        className="relative flex items-center justify-center rounded-lg border-2 border-gray-300 bg-gradient-to-br from-gray-50 to-gray-100 shadow-inner dark:border-gray-600 dark:from-gray-800 dark:to-gray-900"
+                                        style={{
+                                            gridColumn: '5 / 7',
+                                            gridRow: '5 / 7',
+                                        }}
+                                    >
+                                        <div className="text-center">
+                                            <div className="text-5xl font-extrabold text-gray-900 dark:text-white">{activeUserCount}</div>
+                                            <div className="mt-1 text-base font-medium text-gray-600 dark:text-gray-400">artisans online</div>
+                                        </div>
+                                    </div>
+                                );
+                            } else if (isCenterArea) {
+                                // Skip rendering the other center positions since position 44 spans them
+                                return null;
+                            }
+
                             const cellEmoji = cells[position];
                             const clickCount = clickCounts[position] || 0;
                             const shakeKeyValue = shakeKey[position] || 0;

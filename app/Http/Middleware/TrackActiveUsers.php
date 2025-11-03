@@ -2,18 +2,19 @@
 
 namespace App\Http\Middleware;
 
+use App\Services\UserPresenceService;
 use Closure;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Session;
+use Illuminate\Support\Facades\App;
 use Symfony\Component\HttpFoundation\Response;
 
 class TrackActiveUsers
 {
     public function handle(Request $request, Closure $next): Response
     {
-        if (!Session::has('grid_user_id')) {
-            Session::put('grid_user_id', (string) \Str::uuid());
-        }
+        // Register user as active
+        $presenceService = App::make(UserPresenceService::class);
+        $presenceService->registerUser();
 
         return $next($request);
     }
