@@ -92,12 +92,10 @@ export default function Grid({
     const [raindrops, setRaindrops] = useState<RaindropProps[]>([]);
     const [activeUserCount, setActiveUserCount] = useState<number>(initialActiveUserCount);
 
-    // Track when component mounts (user active) and unmounts (user leaving)
+    // Mark user as active on mount, inactive on unmount
     useEffect(() => {
-        // User just loaded the page - mark as active
         axios.post('/grid/user/active').catch((error) => console.error('Failed to mark active:', error));
 
-        // When component unmounts (user navigating away) - mark as inactive
         return () => {
             navigator.sendBeacon('/grid/user/inactive');
         };
@@ -215,43 +213,30 @@ export default function Grid({
         setActiveUserCount(data.count);
     });
 
-    // Track user presence using browser visibility API
+    // Track user activity - update timestamp on any interaction
     useEffect(() => {
-        const handleVisibilityChange = () => {
-            if (document.hidden) {
-                // User left or tab is hidden - mark as inactive
-                axios.post('/grid/user/inactive').catch((error) => console.error('Failed to mark inactive:', error));
-            } else {
-                // User returned or tab is visible - mark as active
-                axios.post('/grid/user/active').catch((error) => console.error('Failed to mark active:', error));
-            }
-        };
-
-        const handleBlur = () => {
-            // Window lost focus - mark as inactive
-            axios.post('/grid/user/inactive').catch((error) => console.error('Failed to mark inactive:', error));
-        };
-
-        const handleFocus = () => {
-            // Window gained focus - mark as active
+        const markActive = () => {
             axios.post('/grid/user/active').catch((error) => console.error('Failed to mark active:', error));
         };
 
-        const handleBeforeUnload = () => {
-            // User is closing/leaving the page - mark as inactive
-            navigator.sendBeacon('/grid/user/inactive');
+        const handleVisibilityChange = () => {
+            if (!document.hidden) {
+                // User returned to tab - mark as active (reset timer)
+                markActive();
+            }
+        };
+
+        const handleFocus = () => {
+            // Window gained focus - mark as active (reset timer)
+            markActive();
         };
 
         document.addEventListener('visibilitychange', handleVisibilityChange);
-        window.addEventListener('blur', handleBlur);
         window.addEventListener('focus', handleFocus);
-        window.addEventListener('beforeunload', handleBeforeUnload);
 
         return () => {
             document.removeEventListener('visibilitychange', handleVisibilityChange);
-            window.removeEventListener('blur', handleBlur);
             window.removeEventListener('focus', handleFocus);
-            window.removeEventListener('beforeunload', handleBeforeUnload);
         };
     }, []);
 

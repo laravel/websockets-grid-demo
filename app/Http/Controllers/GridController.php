@@ -46,6 +46,10 @@ class GridController extends Controller
             'click' => 'required|boolean',
         ]);
 
+        // Track user activity (they clicked, so they're active)
+        $presenceService = App::make(UserPresenceService::class);
+        $presenceService->registerUser();
+
         // Get all data in a consistent way
         $clickCounts = Cache::get(self::GRID_CLICK_COUNTS_KEY, []);
         $clickCounts[$position] = ($clickCounts[$position] ?? 0) + 1;
@@ -166,14 +170,6 @@ class GridController extends Controller
     {
         $presenceService = App::make(UserPresenceService::class);
         $presenceService->registerUser();
-
-        return response()->json(['success' => true]);
-    }
-
-    public function markInactive(): \Illuminate\Http\JsonResponse
-    {
-        $presenceService = App::make(UserPresenceService::class);
-        $presenceService->removeUser();
 
         return response()->json(['success' => true]);
     }
