@@ -76,9 +76,10 @@ class GridController extends Controller
 
         broadcast(new GridCellClicked($position, $clickCounts[$position]))->toOthers();
 
-        if ($this->isGridUniform($cells) && $this->canTriggerRain($emoji)) {
-            $this->setRainCooldown($emoji);
-            $displayEmoji = $this->getDisplayEmoji($emoji);
+        $majorityEmoji = $this->getMajorityEmoji($cells);
+        if ($majorityEmoji && $this->canTriggerRain($majorityEmoji)) {
+            $this->setRainCooldown($majorityEmoji);
+            $displayEmoji = $this->getDisplayEmoji($majorityEmoji);
             broadcast(new GridRainStarted($displayEmoji));
         }
 
@@ -126,23 +127,33 @@ class GridController extends Controller
         };
     }
 
-    private function isGridUniform(array $cells): bool
+    private function getMajorityEmoji(array $cells): ?string
     {
         // 100 total squares - 4 center squares reserved for user count = 96 clickable squares
         $clickableGridSize = 96;
 
+        // Grid must be completely filled
         if (count($cells) !== $clickableGridSize) {
-            return false;
+            return null;
         }
 
-        $firstEmoji = reset($cells);
+        // Count each emoji
+        $emojiCounts = [];
         foreach ($cells as $emoji) {
-            if ($emoji !== $firstEmoji) {
-                return false;
+            $emojiCounts[$emoji] = ($emojiCounts[$emoji] ?? 0) + 1;
+        }
+
+        // Find the emoji with the most occurrences
+        $maxCount = 0;
+        $majorityEmoji = null;
+        foreach ($emojiCounts as $emoji => $count) {
+            if ($count > $maxCount) {
+                $maxCount = $count;
+                $majorityEmoji = $emoji;
             }
         }
 
-        return true;
+        return $majorityEmoji;
     }
 
     private function getDisplayEmoji(string $emoji): string
