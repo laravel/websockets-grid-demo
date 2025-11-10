@@ -25,6 +25,9 @@ class GridController extends Controller
 
     public function show(): \Inertia\Response
     {
+        // Clean up expired cells before showing the grid
+        $this->cleanupExpiredCells();
+
         $cells = Cache::get(self::GRID_CACHE_KEY, []);
         $timestamps = Cache::get(self::GRID_TIMESTAMPS_KEY, []);
         $clickCounts = Cache::get(self::GRID_CLICK_COUNTS_KEY, []);
@@ -125,6 +128,35 @@ class GridController extends Controller
             $clickCount >= 10 => '🚀',
             default => '❤️',
         };
+    }
+
+    private function cleanupExpiredCells(): void
+    {
+        $cells = Cache::get(self::GRID_CACHE_KEY, []);
+        $timestamps = Cache::get(self::GRID_TIMESTAMPS_KEY, []);
+        $clickCounts = Cache::get(self::GRID_CLICK_COUNTS_KEY, []);
+
+        $nowMs = round(microtime(true) * 1000);
+        $fadeTimeMs = 60000; // 60 seconds - matches frontend EMOJI_FADE_DURATION
+
+        $expiredPositions = [];
+        foreach ($timestamps as $position => $timestamp) {
+            if (($nowMs - $timestamp) > $fadeTimeMs) {
+                $expiredPositions[] = $position;
+            }
+        }
+
+        // Remove expired cells
+        foreach ($expiredPositions as $position) {
+            unset($cells[$position]);
+            unset($timestamps[$position]);
+            unset($clickCounts[$position]);
+        }
+
+        // Save cleaned data back to cache
+        Cache::forever(self::GRID_CACHE_KEY, $cells);
+        Cache::forever(self::GRID_TIMESTAMPS_KEY, $timestamps);
+        Cache::forever(self::GRID_CLICK_COUNTS_KEY, $clickCounts);
     }
 
     private function getMajorityEmoji(array $cells): ?string
