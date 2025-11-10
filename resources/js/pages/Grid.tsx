@@ -5,7 +5,7 @@ import { useEffect, useState } from 'react';
 
 declare global {
     interface Window {
-        Echo: any;
+        Echo: unknown;
     }
 }
 
@@ -88,7 +88,6 @@ export default function Grid({
     const [fadeOpacity, setFadeOpacity] = useState<Record<number, number>>({});
     const [shakeKey, setShakeKey] = useState<Record<number, number>>({});
     const [pulsingCells, setPulsingCells] = useState<Record<number, number>>({});
-    const [rainEmoji, setRainEmoji] = useState<string | null>(null);
     const [raindrops, setRaindrops] = useState<RaindropProps[]>([]);
     const [activeUserCount, setActiveUserCount] = useState<number>(initialActiveUserCount);
 
@@ -190,7 +189,6 @@ export default function Grid({
     });
 
     useEchoPublic('grid', '.rain-started', (data: { emoji: string }) => {
-        setRainEmoji(data.emoji);
         const drops: RaindropProps[] = Array.from({ length: 50 }).map(() => ({
             emoji: data.emoji,
             delay: Math.random() * 30,
@@ -200,7 +198,6 @@ export default function Grid({
 
         setTimeout(() => {
             setRaindrops([]);
-            setRainEmoji(null);
         }, 50000);
     });
 
