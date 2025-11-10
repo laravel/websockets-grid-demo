@@ -46,6 +46,7 @@ class GridController extends Controller
             'click' => 'required|boolean',
         ]);
 
+        // Get all data in a consistent way
         $clickCounts = Cache::get(self::GRID_CLICK_COUNTS_KEY, []);
         $clickCounts[$position] = ($clickCounts[$position] ?? 0) + 1;
         Cache::forever(self::GRID_CLICK_COUNTS_KEY, $clickCounts);
@@ -61,6 +62,7 @@ class GridController extends Controller
         $timestamps[$position] = $nowMs;
         Cache::forever(self::GRID_TIMESTAMPS_KEY, $timestamps);
 
+        // Broadcast all data together to ensure consistency
         broadcast(new GridCellUpdated([
             'position' => $position,
             'emoji' => $emoji,
@@ -76,7 +78,12 @@ class GridController extends Controller
             broadcast(new GridRainStarted($displayEmoji));
         }
 
-        return response()->json(['success' => true, 'clickCount' => $clickCounts[$position]]);
+        return response()->json([
+            'success' => true,
+            'clickCount' => $clickCounts[$position],
+            'emoji' => $emoji,
+            'timestamp' => $timestamps[$position],
+        ]);
     }
 
     public function clear(int $position): \Illuminate\Http\JsonResponse
@@ -92,6 +99,14 @@ class GridController extends Controller
         $clickCounts = Cache::get(self::GRID_CLICK_COUNTS_KEY, []);
         unset($clickCounts[$position]);
         Cache::forever(self::GRID_CLICK_COUNTS_KEY, $clickCounts);
+
+        // Broadcast the clear to all clients
+        broadcast(new GridCellUpdated([
+            'position' => $position,
+            'emoji' => null,
+            'timestamp' => null,
+            'clickCount' => 0,
+        ]));
 
         return response()->json(['success' => true]);
     }

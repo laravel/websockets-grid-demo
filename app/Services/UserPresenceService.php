@@ -47,7 +47,7 @@ class UserPresenceService
         Cache::forever(self::USER_PRESENCE_CACHE_KEY, $activeUsers);
 
         $count = count($activeUsers);
-        broadcast(new UserCountUpdated($count))->toOthers();
+        broadcast(new UserCountUpdated($count));
 
         return $count;
     }
@@ -88,6 +88,10 @@ class UserPresenceService
     private function broadcastUserCount(): void
     {
         $count = $this->getActiveUserCount();
-        broadcast(new UserCountUpdated($count))->toOthers();
+        // Only broadcast if we're not in a console environment (like tests)
+        if (app()->runningInConsole()) {
+            return;
+        }
+        broadcast(new UserCountUpdated($count));
     }
 }

@@ -96,42 +96,56 @@ export default function Grid({
         const interval = setInterval(() => {
             const now = Date.now();
             const newFadeOpacity: Record<number, number> = {};
+            const positionsToClear: number[] = [];
 
             Object.entries(timestamps).forEach(([pos, timestamp]) => {
                 const ageMs = now - timestamp;
                 const fadeProgress = Math.min(ageMs / EMOJI_FADE_DURATION, 1);
+
                 if (fadeProgress < 1) {
                     newFadeOpacity[parseInt(pos)] = 1 - fadeProgress;
                 } else {
                     newFadeOpacity[parseInt(pos)] = 0;
+                    positionsToClear.push(parseInt(pos));
                 }
             });
 
             setFadeOpacity(newFadeOpacity);
+
+            // Clear expired cells
+            if (positionsToClear.length > 0) {
+                setCells((prev) => {
+                    const updated = { ...prev };
+                    positionsToClear.forEach((pos) => {
+                        updated[pos] = null;
+                    });
+                    return updated;
+                });
+
+                setTimestamps((prev) => {
+                    const updated = { ...prev };
+                    positionsToClear.forEach((pos) => {
+                        delete updated[pos];
+                    });
+                    return updated;
+                });
+
+                setClickCounts((prev) => {
+                    const updated = { ...prev };
+                    positionsToClear.forEach((pos) => {
+                        delete updated[pos];
+                    });
+                    return updated;
+                });
+
+                // Clear from backend
+                positionsToClear.forEach((pos) => {
+                    axios.delete(`/grid/${pos}/clear`).catch((error) => console.error('Failed to clear cell:', error));
+                });
+            }
         }, 100);
 
         return () => clearInterval(interval);
-    }, [timestamps]);
-
-    useEffect(() => {
-        const checkFadeComplete = setInterval(() => {
-            const now = Date.now();
-            setCells((prev) => {
-                const updated = { ...prev };
-                Object.entries(timestamps).forEach(([pos, timestamp]) => {
-                    const ageMs = now - timestamp;
-
-                    if (ageMs > EMOJI_FADE_DURATION && updated[parseInt(pos)]) {
-                        updated[parseInt(pos)] = null;
-
-                        axios.delete(`/grid/${pos}/clear`).catch((error) => console.error('Failed to clear cell:', error));
-                    }
-                });
-                return updated;
-            });
-        }, 500);
-
-        return () => clearInterval(checkFadeComplete);
     }, [timestamps]);
 
     useEchoPublic('grid', '.cell-updated', (data: { position: number; emoji: string; timestamp: number; clickCount: number }) => {
@@ -354,8 +368,10 @@ export default function Grid({
                                         }}
                                     >
                                         <div className="text-center">
-                                            <div className="text-5xl font-extrabold text-gray-900 dark:text-white">{activeUserCount}</div>
-                                            <div className="mt-1 text-base font-medium text-gray-600 dark:text-gray-400">artisans online</div>
+                                            <div className="text-4xl font-extrabold text-gray-900 sm:text-5xl dark:text-white">{activeUserCount}</div>
+                                            <div className="mt-1 text-sm font-medium text-gray-600 sm:text-base dark:text-gray-400">
+                                                artisans online
+                                            </div>
                                         </div>
                                     </div>
                                 );
@@ -439,7 +455,7 @@ export default function Grid({
                                     >
                                         {renderEmoji()}
                                     </div>
-                                    {clickCount > 0 && (
+                                    {(clickCount > 0 || cellEmoji) && (
                                         <div
                                             className="absolute right-0.5 bottom-0.5 hidden items-center justify-center rounded-full bg-gray-900 font-bold text-white md:flex dark:bg-white dark:text-gray-900"
                                             style={{
@@ -450,7 +466,7 @@ export default function Grid({
                                                 transition: 'opacity 100ms linear',
                                             }}
                                         >
-                                            {clickCount > 999 ? '🏆' : clickCount}
+                                            {clickCount > 999 ? '🏆' : clickCount > 0 ? clickCount : ''}
                                         </div>
                                     )}
                                 </button>
