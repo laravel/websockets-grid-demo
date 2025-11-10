@@ -92,6 +92,17 @@ export default function Grid({
     const [raindrops, setRaindrops] = useState<RaindropProps[]>([]);
     const [activeUserCount, setActiveUserCount] = useState<number>(initialActiveUserCount);
 
+    // Track when component mounts (user active) and unmounts (user leaving)
+    useEffect(() => {
+        // User just loaded the page - mark as active
+        axios.post('/grid/user/active').catch((error) => console.error('Failed to mark active:', error));
+
+        // When component unmounts (user navigating away) - mark as inactive
+        return () => {
+            navigator.sendBeacon('/grid/user/inactive');
+        };
+    }, []);
+
     useEffect(() => {
         const interval = setInterval(() => {
             const now = Date.now();
@@ -203,6 +214,46 @@ export default function Grid({
     useEchoPublic('grid-active-users', '.user-count-updated', (data: { count: number }) => {
         setActiveUserCount(data.count);
     });
+
+    // Track user presence using browser visibility API
+    useEffect(() => {
+        const handleVisibilityChange = () => {
+            if (document.hidden) {
+                // User left or tab is hidden - mark as inactive
+                axios.post('/grid/user/inactive').catch((error) => console.error('Failed to mark inactive:', error));
+            } else {
+                // User returned or tab is visible - mark as active
+                axios.post('/grid/user/active').catch((error) => console.error('Failed to mark active:', error));
+            }
+        };
+
+        const handleBlur = () => {
+            // Window lost focus - mark as inactive
+            axios.post('/grid/user/inactive').catch((error) => console.error('Failed to mark inactive:', error));
+        };
+
+        const handleFocus = () => {
+            // Window gained focus - mark as active
+            axios.post('/grid/user/active').catch((error) => console.error('Failed to mark active:', error));
+        };
+
+        const handleBeforeUnload = () => {
+            // User is closing/leaving the page - mark as inactive
+            navigator.sendBeacon('/grid/user/inactive');
+        };
+
+        document.addEventListener('visibilitychange', handleVisibilityChange);
+        window.addEventListener('blur', handleBlur);
+        window.addEventListener('focus', handleFocus);
+        window.addEventListener('beforeunload', handleBeforeUnload);
+
+        return () => {
+            document.removeEventListener('visibilitychange', handleVisibilityChange);
+            window.removeEventListener('blur', handleBlur);
+            window.removeEventListener('focus', handleFocus);
+            window.removeEventListener('beforeunload', handleBeforeUnload);
+        };
+    }, []);
 
     return (
         <>
@@ -367,9 +418,9 @@ export default function Grid({
                                             gridRow: '5 / 7',
                                         }}
                                     >
-                                        <div className="text-center">
-                                            <div className="text-4xl font-extrabold text-gray-900 sm:text-5xl dark:text-white">{activeUserCount}</div>
-                                            <div className="mt-1 text-sm font-medium text-gray-600 sm:text-base dark:text-gray-400">
+                                        <div className="px-2 text-center">
+                                            <div className="text-3xl font-extrabold text-gray-900 sm:text-5xl dark:text-white">{activeUserCount}</div>
+                                            <div className="mt-0.5 text-xs font-medium text-gray-600 sm:mt-1 sm:text-base dark:text-gray-400">
                                                 artisans online
                                             </div>
                                         </div>

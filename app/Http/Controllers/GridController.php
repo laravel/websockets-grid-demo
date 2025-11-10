@@ -161,4 +161,20 @@ class GridController extends Controller
     {
         Cache::put(self::RAIN_COOLDOWN_KEY, $emoji, self::RAIN_COOLDOWN_DURATION);
     }
+
+    public function markActive(): \Illuminate\Http\JsonResponse
+    {
+        $presenceService = App::make(UserPresenceService::class);
+        $presenceService->registerUser();
+
+        return response()->json(['success' => true]);
+    }
+
+    public function markInactive(): \Illuminate\Http\JsonResponse
+    {
+        $presenceService = App::make(UserPresenceService::class);
+        $presenceService->removeUser();
+
+        return response()->json(['success' => true]);
+    }
 }
