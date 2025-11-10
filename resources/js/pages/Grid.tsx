@@ -332,29 +332,29 @@ export default function Grid({
                                 </clipPath>
                             </defs>
                         </svg>
-                        <p className="text-sm text-gray-900 dark:text-gray-300">Real-time collaborative grid — click cells to level up emojis</p>
+                        <p className="text-sm text-gray-900">Real-time collaborative grid — click cells to level up emojis</p>
                         <div className="flex flex-wrap justify-center gap-3 sm:gap-4">
                             <div className="relative flex aspect-square w-16 items-center justify-center rounded-lg bg-white shadow-[0_0_0_1px_rgba(0,26,51,0.16),0_0_1px_0_rgba(0,0,0,0.03),0_1px_2px_0_rgba(0,0,0,0.06)] sm:w-20">
                                 <div className="text-3xl sm:text-4xl">❤️</div>
-                                <div className="absolute -right-1.5 -bottom-1.5 flex h-6 w-6 items-center justify-center rounded-full bg-gray-900/80 text-[11px] font-bold text-white dark:bg-gray-100/80 dark:text-gray-900">
+                                <div className="absolute -right-1.5 -bottom-1.5 flex h-6 w-6 items-center justify-center rounded-full bg-gray-900/80 text-[11px] font-bold text-white">
                                     1
                                 </div>
                             </div>
                             <div className="relative flex aspect-square w-16 items-center justify-center rounded-lg bg-white shadow-[0_0_0_1px_rgba(0,26,51,0.16),0_0_1px_0_rgba(0,0,0,0.03),0_1px_2px_0_rgba(0,0,0,0.06)] sm:w-20">
                                 <div className="text-3xl sm:text-4xl">🚀</div>
-                                <div className="absolute -right-1.5 -bottom-1.5 flex h-6 w-6 items-center justify-center rounded-full bg-gray-900/80 text-[11px] font-bold text-white dark:bg-gray-100/80 dark:text-gray-900">
+                                <div className="absolute -right-1.5 -bottom-1.5 flex h-6 w-6 items-center justify-center rounded-full bg-gray-900/80 text-[11px] font-bold text-white">
                                     10
                                 </div>
                             </div>
                             <div className="relative flex aspect-square w-16 items-center justify-center rounded-lg bg-white shadow-[0_0_0_1px_rgba(0,26,51,0.16),0_0_1px_0_rgba(0,0,0,0.03),0_1px_2px_0_rgba(0,0,0,0.06)] sm:w-20">
                                 <div className="text-3xl sm:text-4xl">🤯</div>
-                                <div className="absolute -right-1.5 -bottom-1.5 flex h-6 w-6 items-center justify-center rounded-full bg-gray-900/80 text-[11px] font-bold text-white dark:bg-gray-100/80 dark:text-gray-900">
+                                <div className="absolute -right-1.5 -bottom-1.5 flex h-6 w-6 items-center justify-center rounded-full bg-gray-900/80 text-[11px] font-bold text-white">
                                     50
                                 </div>
                             </div>
                             <div className="relative flex aspect-square w-16 items-center justify-center rounded-lg bg-white shadow-[0_0_0_1px_rgba(0,26,51,0.16),0_0_1px_0_rgba(0,0,0,0.03),0_1px_2px_0_rgba(0,0,0,0.06)] sm:w-20">
                                 <div className="text-3xl sm:text-4xl">🔥</div>
-                                <div className="absolute -right-1.5 -bottom-1.5 flex h-6 w-6 items-center justify-center rounded-full bg-gray-900/80 text-[11px] font-bold text-white dark:bg-gray-100/80 dark:text-gray-900">
+                                <div className="absolute -right-1.5 -bottom-1.5 flex h-6 w-6 items-center justify-center rounded-full bg-gray-900/80 text-[11px] font-bold text-white">
                                     100
                                 </div>
                             </div>
@@ -367,7 +367,7 @@ export default function Grid({
                                         style={{ filter: 'brightness(0) saturate(100%)' }}
                                     />
                                 </div>
-                                <div className="absolute -right-1.5 -bottom-1.5 flex h-6 w-6 items-center justify-center rounded-full bg-gray-900/80 text-[11px] font-bold text-white dark:bg-gray-100/80 dark:text-gray-900">
+                                <div className="absolute -right-1.5 -bottom-1.5 flex h-6 w-6 items-center justify-center rounded-full bg-gray-900/80 text-[11px] font-bold text-white">
                                     ?
                                 </div>
                             </div>
@@ -398,7 +398,7 @@ export default function Grid({
                                     return (
                                         <div
                                             key={position}
-                                            className="relative z-10 flex items-center justify-center bg-zinc-50/50 dark:bg-zinc-900/50"
+                                            className="relative z-10 flex items-center justify-center bg-zinc-50/50"
                                             style={{
                                                 gridColumn: '5 / 7',
                                                 gridRow: '5 / 7',
@@ -406,10 +406,8 @@ export default function Grid({
                                             }}
                                         >
                                             <div className="px-2 text-center">
-                                                <div className="text-3xl font-extrabold text-gray-900 sm:text-5xl dark:text-white">
-                                                    {activeUserCount}
-                                                </div>
-                                                <div className="mt-0.5 text-xs font-medium text-gray-600 sm:mt-1 sm:text-base dark:text-gray-400">
+                                                <div className="text-3xl font-extrabold text-gray-900 sm:text-5xl">{activeUserCount}</div>
+                                                <div className="mt-0.5 text-xs font-medium text-gray-600 sm:mt-1 sm:text-base">
                                                     artisan{activeUserCount !== 1 ? 's' : ''} online
                                                 </div>
                                             </div>
@@ -488,7 +486,7 @@ export default function Grid({
                                                 console.error('Failed to update cell:', error);
                                             }
                                         }}
-                                        className={`relative flex h-full w-full items-center justify-center bg-white text-4xl transition-all duration-100 hover:bg-zinc-50 dark:bg-zinc-950 dark:hover:bg-zinc-900 ${
+                                        className={`relative flex h-full w-full items-center justify-center bg-white text-4xl transition-all duration-100 hover:bg-zinc-50 ${
                                             isTopLeftCorner ? 'rounded-tl-xl' : ''
                                         } ${isTopRightCorner ? 'rounded-tr-xl' : ''} ${isBottomLeftCorner ? 'rounded-bl-xl' : ''} ${
                                             isBottomRightCorner ? 'rounded-br-xl' : ''
@@ -510,7 +508,7 @@ export default function Grid({
                                         </div>
                                         {(clickCount > 0 || cellEmoji) && (
                                             <div
-                                                className="absolute right-0.5 bottom-0.5 hidden items-center justify-center rounded-full bg-gray-900/80 font-bold text-white md:flex dark:bg-white/80 dark:text-gray-900"
+                                                className="absolute right-0.5 bottom-0.5 hidden items-center justify-center rounded-full bg-gray-900/80 font-bold text-white md:flex"
                                                 style={{
                                                     width: clickCount > 999 ? '24px' : '26px',
                                                     height: clickCount > 999 ? '24px' : '26px',
