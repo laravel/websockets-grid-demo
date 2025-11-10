@@ -5,7 +5,7 @@ import { useEffect, useState } from 'react';
 
 declare global {
     interface Window {
-        Echo: any;
+        Echo: unknown;
     }
 }
 
@@ -88,50 +88,67 @@ export default function Grid({
     const [fadeOpacity, setFadeOpacity] = useState<Record<number, number>>({});
     const [shakeKey, setShakeKey] = useState<Record<number, number>>({});
     const [pulsingCells, setPulsingCells] = useState<Record<number, number>>({});
-    const [rainEmoji, setRainEmoji] = useState<string | null>(null);
     const [raindrops, setRaindrops] = useState<RaindropProps[]>([]);
     const [activeUserCount, setActiveUserCount] = useState<number>(initialActiveUserCount);
+
+    // Mark user as active on mount, inactive on unmount
+    useEffect(() => {
+        axios.post('/grid/user/active').catch((error) => console.error('Failed to mark active:', error));
+
+        return () => {
+            navigator.sendBeacon('/grid/user/inactive');
+        };
+    }, []);
 
     useEffect(() => {
         const interval = setInterval(() => {
             const now = Date.now();
             const newFadeOpacity: Record<number, number> = {};
+            const positionsToClear: number[] = [];
 
             Object.entries(timestamps).forEach(([pos, timestamp]) => {
                 const ageMs = now - timestamp;
                 const fadeProgress = Math.min(ageMs / EMOJI_FADE_DURATION, 1);
+
                 if (fadeProgress < 1) {
                     newFadeOpacity[parseInt(pos)] = 1 - fadeProgress;
                 } else {
                     newFadeOpacity[parseInt(pos)] = 0;
+                    positionsToClear.push(parseInt(pos));
                 }
             });
 
             setFadeOpacity(newFadeOpacity);
+
+            // Clear expired cells locally only
+            if (positionsToClear.length > 0) {
+                setCells((prev) => {
+                    const updated = { ...prev };
+                    positionsToClear.forEach((pos) => {
+                        updated[pos] = null;
+                    });
+                    return updated;
+                });
+
+                setTimestamps((prev) => {
+                    const updated = { ...prev };
+                    positionsToClear.forEach((pos) => {
+                        delete updated[pos];
+                    });
+                    return updated;
+                });
+
+                setClickCounts((prev) => {
+                    const updated = { ...prev };
+                    positionsToClear.forEach((pos) => {
+                        delete updated[pos];
+                    });
+                    return updated;
+                });
+            }
         }, 100);
 
         return () => clearInterval(interval);
-    }, [timestamps]);
-
-    useEffect(() => {
-        const checkFadeComplete = setInterval(() => {
-            const now = Date.now();
-            setCells((prev) => {
-                const updated = { ...prev };
-                Object.entries(timestamps).forEach(([pos, timestamp]) => {
-                    const ageMs = now - timestamp;
-
-                    if (ageMs > EMOJI_FADE_DURATION && updated[parseInt(pos)]) {
-                        updated[parseInt(pos)] = null;
-
-                        axios.delete(`/grid/${pos}/clear`).catch((error) => console.error('Failed to clear cell:', error));
-                    }
-                });
-                return updated;
-            });
-        }, 500);
-
-        return () => clearInterval(checkFadeComplete);
     }, [timestamps]);
 
     useEchoPublic('grid', '.cell-updated', (data: { position: number; emoji: string; timestamp: number; clickCount: number }) => {
@@ -172,7 +189,6 @@ export default function Grid({
     });
 
     useEchoPublic('grid', '.rain-started', (data: { emoji: string }) => {
-        setRainEmoji(data.emoji);
         const drops: RaindropProps[] = Array.from({ length: 50 }).map(() => ({
             emoji: data.emoji,
             delay: Math.random() * 30,
@@ -182,13 +198,39 @@ export default function Grid({
 
         setTimeout(() => {
             setRaindrops([]);
-            setRainEmoji(null);
         }, 50000);
     });
 
     useEchoPublic('grid-active-users', '.user-count-updated', (data: { count: number }) => {
         setActiveUserCount(data.count);
     });
+
+    // Track user activity - update timestamp on any interaction
+    useEffect(() => {
+        const markActive = () => {
+            axios.post('/grid/user/active').catch((error) => console.error('Failed to mark active:', error));
+        };
+
+        const handleVisibilityChange = () => {
+            if (!document.hidden) {
+                // User returned to tab - mark as active (reset timer)
+                markActive();
+            }
+        };
+
+        const handleFocus = () => {
+            // Window gained focus - mark as active (reset timer)
+            markActive();
+        };
+
+        document.addEventListener('visibilitychange', handleVisibilityChange);
+        window.addEventListener('focus', handleFocus);
+
+        return () => {
+            document.removeEventListener('visibilitychange', handleVisibilityChange);
+            window.removeEventListener('focus', handleFocus);
+        };
+    }, []);
 
     return (
         <>
@@ -211,16 +253,16 @@ export default function Grid({
                 `}
             </style>
             <Head title="Emoji Grid" />
-            <div className="flex min-h-screen flex-col bg-white dark:bg-black">
+            <div className="flex min-h-screen flex-col" style={{ backgroundColor: '#fcfcfd' }}>
                 {raindrops.map((drop, index) => (
                     <Raindrop key={index} emoji={drop.emoji} delay={drop.delay} left={drop.left} />
                 ))}
-                <div className="border-b border-gray-200 bg-gray-50 px-4 py-4 sm:px-6 sm:py-6 dark:border-gray-800 dark:bg-gray-900">
-                    <div className="flex flex-col items-center gap-4">
+                <div className="px-4 py-6 sm:px-6 sm:py-8">
+                    <div className="flex flex-col items-center gap-6">
                         <svg width="245" height="32" viewBox="0 0 491 64" fill="none" xmlns="http://www.w3.org/2000/svg" className="h-8 w-auto">
                             <style>
-                                {`.laravel { fill: #1B1B18 } @media (prefers-color-scheme:dark) { .laravel { fill: #fff } }
-                                .reverb { fill: #868682 } @media (prefers-color-scheme:dark) { .reverb { fill: #A1A09A } }`}
+                                {`.laravel { fill: #1B1B18 }
+                                .reverb { fill: #868682 }`}
                             </style>
                             <rect width="64" height="64" fill="#FF95A8" />
                             <g clipPath="url(#clip0_259_510224)">
@@ -287,37 +329,42 @@ export default function Grid({
                                 </clipPath>
                             </defs>
                         </svg>
-                        <p className="text-sm text-gray-900 dark:text-gray-300">Real-time collaborative grid — click cells to level up emojis</p>
-                        <div className="flex flex-wrap justify-center gap-4 sm:gap-6">
-                            <div className="relative">
-                                <div className="rounded-lg bg-white px-3 py-1 text-4xl dark:bg-gray-800">❤️</div>
-                                <div className="absolute right-0 bottom-0 flex h-6 w-6 items-center justify-center rounded-full bg-gray-900 text-xs font-bold text-white dark:bg-gray-100 dark:text-gray-900">
+                        <p className="text-sm text-gray-900">Real-time collaborative grid — click cells to level up emojis</p>
+                        <div className="flex flex-wrap justify-center gap-3 sm:gap-4">
+                            <div className="relative flex aspect-square w-16 items-center justify-center rounded-lg bg-white shadow-[0_0_0_1px_rgba(0,26,51,0.16),0_0_1px_0_rgba(0,0,0,0.03),0_1px_2px_0_rgba(0,0,0,0.06)] sm:w-20">
+                                <div className="text-3xl sm:text-4xl">❤️</div>
+                                <div className="absolute -right-1.5 -bottom-1.5 flex h-6 w-6 items-center justify-center rounded-full bg-gray-900/80 text-[11px] font-bold text-white">
                                     1
                                 </div>
                             </div>
-                            <div className="relative">
-                                <div className="rounded-lg bg-white px-3 py-1 text-4xl dark:bg-gray-800">🚀</div>
-                                <div className="absolute right-0 bottom-0 flex h-6 w-6 items-center justify-center rounded-full bg-gray-900 text-xs font-bold text-white dark:bg-gray-100 dark:text-gray-900">
+                            <div className="relative flex aspect-square w-16 items-center justify-center rounded-lg bg-white shadow-[0_0_0_1px_rgba(0,26,51,0.16),0_0_1px_0_rgba(0,0,0,0.03),0_1px_2px_0_rgba(0,0,0,0.06)] sm:w-20">
+                                <div className="text-3xl sm:text-4xl">🚀</div>
+                                <div className="absolute -right-1.5 -bottom-1.5 flex h-6 w-6 items-center justify-center rounded-full bg-gray-900/80 text-[11px] font-bold text-white">
                                     10
                                 </div>
                             </div>
-                            <div className="relative">
-                                <div className="rounded-lg bg-white px-3 py-1 text-4xl dark:bg-gray-800">🤯</div>
-                                <div className="absolute right-0 bottom-0 flex h-6 w-6 items-center justify-center rounded-full bg-gray-900 text-xs font-bold text-white dark:bg-gray-100 dark:text-gray-900">
+                            <div className="relative flex aspect-square w-16 items-center justify-center rounded-lg bg-white shadow-[0_0_0_1px_rgba(0,26,51,0.16),0_0_1px_0_rgba(0,0,0,0.03),0_1px_2px_0_rgba(0,0,0,0.06)] sm:w-20">
+                                <div className="text-3xl sm:text-4xl">🤯</div>
+                                <div className="absolute -right-1.5 -bottom-1.5 flex h-6 w-6 items-center justify-center rounded-full bg-gray-900/80 text-[11px] font-bold text-white">
                                     50
                                 </div>
                             </div>
-                            <div className="relative">
-                                <div className="rounded-lg bg-white px-3 py-1 text-4xl dark:bg-gray-800">🔥</div>
-                                <div className="absolute right-0 bottom-0 flex h-6 w-6 items-center justify-center rounded-full bg-gray-900 text-xs font-bold text-white dark:bg-gray-100 dark:text-gray-900">
+                            <div className="relative flex aspect-square w-16 items-center justify-center rounded-lg bg-white shadow-[0_0_0_1px_rgba(0,26,51,0.16),0_0_1px_0_rgba(0,0,0,0.03),0_1px_2px_0_rgba(0,0,0,0.06)] sm:w-20">
+                                <div className="text-3xl sm:text-4xl">🔥</div>
+                                <div className="absolute -right-1.5 -bottom-1.5 flex h-6 w-6 items-center justify-center rounded-full bg-gray-900/80 text-[11px] font-bold text-white">
                                     100
                                 </div>
                             </div>
-                            <div className="relative">
-                                <div className="rounded-lg bg-white px-3 py-1 text-4xl dark:bg-gray-800">
-                                    <img src={TAYLOR_EMOJI_URL} alt="taylor" className="h-8 w-8" style={{ filter: 'brightness(0) saturate(100%)' }} />
+                            <div className="relative flex aspect-square w-16 items-center justify-center rounded-lg bg-white shadow-[0_0_0_1px_rgba(0,26,51,0.16),0_0_1px_0_rgba(0,0,0,0.03),0_1px_2px_0_rgba(0,0,0,0.06)] sm:w-20">
+                                <div className="text-3xl sm:text-4xl">
+                                    <img
+                                        src={TAYLOR_EMOJI_URL}
+                                        alt="taylor"
+                                        className="h-7 w-7 sm:h-8 sm:w-8"
+                                        style={{ filter: 'brightness(0) saturate(100%)' }}
+                                    />
                                 </div>
-                                <div className="absolute right-0 bottom-0 flex h-6 w-6 items-center justify-center rounded-full bg-gray-900 text-xs font-bold text-white dark:bg-gray-100 dark:text-gray-900">
+                                <div className="absolute -right-1.5 -bottom-1.5 flex h-6 w-6 items-center justify-center rounded-full bg-gray-900/80 text-[11px] font-bold text-white">
                                     ?
                                 </div>
                             </div>
@@ -325,137 +372,155 @@ export default function Grid({
                     </div>
                 </div>
 
-                <div className="flex flex-1 items-center justify-center overflow-auto">
-                    <div
-                        className="mt-4 grid gap-0 rounded-lg border border-gray-300 bg-gray-50 p-4 sm:mt-0 dark:border-gray-700 dark:bg-gray-900"
-                        style={{
-                            gridTemplateColumns: `repeat(${GRID_COLUMNS}, minmax(0, 1fr))`,
-                            gridAutoRows: '1fr',
-                            width: '100vw',
-                            height: '100vw',
-                            maxWidth: '800px',
-                            maxHeight: '800px',
-                            aspectRatio: '1 / 1',
-                        }}
-                    >
-                        {Array.from({ length: GRID_SIZE }).map((_, position) => {
-                            // Check if this position is in the center 2x2 area (positions 44, 45, 54, 55)
-                            const isCenterArea = position === 44 || position === 45 || position === 54 || position === 55;
+                <div className="flex flex-1 items-center justify-center overflow-auto p-4 sm:p-6">
+                    <div className="rounded-2xl p-2 shadow-[0px_0px_1.5px_0.5px_rgba(0,0,0,0.12)_inset]" style={{ backgroundColor: '#f9f9fb' }}>
+                        <div
+                            className="grid gap-0 overflow-hidden rounded-xl bg-white shadow-[0_0_0_1px_rgba(0,26,51,0.16)]"
+                            style={{
+                                gridTemplateColumns: `repeat(${GRID_COLUMNS}, minmax(0, 1fr))`,
+                                gridAutoRows: '1fr',
+                                width: '100vw',
+                                height: '100vw',
+                                maxWidth: '800px',
+                                maxHeight: '800px',
+                                aspectRatio: '1 / 1',
+                            }}
+                        >
+                            {Array.from({ length: GRID_SIZE }).map((_, position) => {
+                                // Check if this position is in the center 2x2 area (positions 44, 45, 54, 55)
+                                const isCenterArea = position === 44 || position === 45 || position === 54 || position === 55;
 
-                            if (isCenterArea && position === 44) {
-                                // Show user count spanning all 4 center squares
-                                return (
-                                    <div
-                                        key={position}
-                                        className="relative flex items-center justify-center rounded-lg border-2 border-gray-300 bg-gradient-to-br from-gray-50 to-gray-100 shadow-inner dark:border-gray-600 dark:from-gray-800 dark:to-gray-900"
-                                        style={{
-                                            gridColumn: '5 / 7',
-                                            gridRow: '5 / 7',
-                                        }}
-                                    >
-                                        <div className="text-center">
-                                            <div className="text-5xl font-extrabold text-gray-900 dark:text-white">{activeUserCount}</div>
-                                            <div className="mt-1 text-base font-medium text-gray-600 dark:text-gray-400">artisans online</div>
-                                        </div>
-                                    </div>
-                                );
-                            } else if (isCenterArea) {
-                                // Skip rendering the other center positions since position 44 spans them
-                                return null;
-                            }
-
-                            const cellEmoji = cells[position];
-                            const clickCount = clickCounts[position] || 0;
-                            const shakeKeyValue = shakeKey[position] || 0;
-                            const pulseClickCount = pulsingCells[position] || 0;
-                            const progress = getProgressToNextLevel(pulseClickCount);
-
-                            const renderEmoji = (): React.ReactNode => {
-                                if (cellEmoji === 'taylor') {
-                                    return <img src={TAYLOR_EMOJI_URL} alt="taylor" className="h-full w-full object-contain" />;
-                                }
-                                return cellEmoji || '';
-                            };
-
-                            return (
-                                <button
-                                    key={position}
-                                    type="button"
-                                    onClick={async () => {
-                                        const currentClickCount = (clickCounts[position] || 0) + 1;
-                                        const getEmojiForClickCount = (count: number): string => {
-                                            if (count >= 500) return 'taylor';
-                                            if (count >= 100) return '🔥';
-                                            if (count >= 50) return '🤯';
-                                            if (count >= 10) return '🚀';
-                                            return '❤️';
-                                        };
-                                        const newEmoji = getEmojiForClickCount(currentClickCount);
-
-                                        setCells((prev) => ({
-                                            ...prev,
-                                            [position]: newEmoji,
-                                        }));
-                                        setClickCounts((prev) => ({
-                                            ...prev,
-                                            [position]: currentClickCount,
-                                        }));
-                                        setShakeKey((prev) => ({
-                                            ...prev,
-                                            [position]: (prev[position] || 0) + 1,
-                                        }));
-                                        setPulsingCells((prev) => ({
-                                            ...prev,
-                                            [position]: currentClickCount,
-                                        }));
-                                        setTimestamps((prev) => ({
-                                            ...prev,
-                                            [position]: Date.now(),
-                                        }));
-
-                                        setTimeout(() => {
-                                            setPulsingCells((prev) => ({
-                                                ...prev,
-                                                [position]: 0,
-                                            }));
-                                        }, 1500);
-
-                                        try {
-                                            await axios.put(`/grid/${position}`, { click: true });
-                                        } catch (error) {
-                                            console.error('Failed to update cell:', error);
-                                        }
-                                    }}
-                                    className="relative flex h-full w-full items-center justify-center border-2 border-gray-200 bg-white text-4xl transition-all duration-100 hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-800 dark:hover:bg-gray-700"
-                                >
-                                    <div
-                                        key={`shake-${shakeKeyValue}`}
-                                        className={`relative flex h-full w-full items-center justify-center text-xl sm:text-4xl ${shakeKeyValue > 0 ? getShakeIntensity(getProgressToNextLevel(clickCount)) : ''} ${pulseClickCount > 0 ? getGlowIntensity(progress) : ''}`}
-                                        style={{
-                                            opacity: fadeOpacity[position] !== undefined ? fadeOpacity[position] : 1,
-                                            transition: 'opacity 100ms linear',
-                                            lineHeight: '1',
-                                        }}
-                                    >
-                                        {renderEmoji()}
-                                    </div>
-                                    {clickCount > 0 && (
+                                if (isCenterArea && position === 44) {
+                                    // Show user count spanning all 4 center squares
+                                    return (
                                         <div
-                                            className="absolute right-0.5 bottom-0.5 hidden items-center justify-center rounded-full bg-gray-900 font-bold text-white md:flex dark:bg-white dark:text-gray-900"
+                                            key={position}
+                                            className="relative z-10 flex items-center justify-center bg-zinc-50/50"
                                             style={{
-                                                width: clickCount > 999 ? '24px' : '26px',
-                                                height: clickCount > 999 ? '24px' : '26px',
-                                                fontSize: clickCount > 999 ? '16px' : clickCount > 99 ? '10px' : '12px',
-                                                opacity: fadeOpacity[position] !== undefined ? fadeOpacity[position] : 1,
-                                                transition: 'opacity 100ms linear',
+                                                gridColumn: '5 / 7',
+                                                gridRow: '5 / 7',
+                                                boxShadow: 'inset 0 0 0 1px rgba(0, 26, 51, 0.16)',
                                             }}
                                         >
-                                            {clickCount > 999 ? '🏆' : clickCount}
+                                            <div className="px-2 text-center">
+                                                <div className="text-3xl font-extrabold text-gray-900 sm:text-5xl">{activeUserCount}</div>
+                                                <div className="mt-0.5 text-xs font-medium text-gray-600 sm:mt-1 sm:text-base">
+                                                    artisan{activeUserCount !== 1 ? 's' : ''} online
+                                                </div>
+                                            </div>
                                         </div>
-                                    )}
-                                </button>
-                            );
-                        })}
+                                    );
+                                } else if (isCenterArea) {
+                                    // Skip rendering the other center positions since position 44 spans them
+                                    return null;
+                                }
+
+                                const cellEmoji = cells[position];
+                                const clickCount = clickCounts[position] || 0;
+                                const shakeKeyValue = shakeKey[position] || 0;
+                                const pulseClickCount = pulsingCells[position] || 0;
+                                const progress = getProgressToNextLevel(pulseClickCount);
+
+                                // Determine if this is a corner cell and which corner
+                                const isTopLeftCorner = position === 0;
+                                const isTopRightCorner = position === GRID_COLUMNS - 1;
+                                const isBottomLeftCorner = position === GRID_SIZE - GRID_COLUMNS;
+                                const isBottomRightCorner = position === GRID_SIZE - 1;
+
+                                const renderEmoji = (): React.ReactNode => {
+                                    if (cellEmoji === 'taylor') {
+                                        return <img src={TAYLOR_EMOJI_URL} alt="taylor" className="h-full w-full object-contain" />;
+                                    }
+                                    return cellEmoji || '';
+                                };
+
+                                return (
+                                    <button
+                                        key={position}
+                                        type="button"
+                                        onClick={async () => {
+                                            const currentClickCount = (clickCounts[position] || 0) + 1;
+                                            const getEmojiForClickCount = (count: number): string => {
+                                                if (count >= 500) return 'taylor';
+                                                if (count >= 100) return '🔥';
+                                                if (count >= 50) return '🤯';
+                                                if (count >= 10) return '🚀';
+                                                return '❤️';
+                                            };
+                                            const newEmoji = getEmojiForClickCount(currentClickCount);
+
+                                            setCells((prev) => ({
+                                                ...prev,
+                                                [position]: newEmoji,
+                                            }));
+                                            setClickCounts((prev) => ({
+                                                ...prev,
+                                                [position]: currentClickCount,
+                                            }));
+                                            setShakeKey((prev) => ({
+                                                ...prev,
+                                                [position]: (prev[position] || 0) + 1,
+                                            }));
+                                            setPulsingCells((prev) => ({
+                                                ...prev,
+                                                [position]: currentClickCount,
+                                            }));
+                                            setTimestamps((prev) => ({
+                                                ...prev,
+                                                [position]: Date.now(),
+                                            }));
+
+                                            setTimeout(() => {
+                                                setPulsingCells((prev) => ({
+                                                    ...prev,
+                                                    [position]: 0,
+                                                }));
+                                            }, 1500);
+
+                                            try {
+                                                await axios.put(`/grid/${position}`, { click: true });
+                                            } catch (error) {
+                                                console.error('Failed to update cell:', error);
+                                            }
+                                        }}
+                                        className={`relative flex h-full w-full items-center justify-center bg-white text-4xl transition-all duration-100 hover:bg-zinc-50 ${
+                                            isTopLeftCorner ? 'rounded-tl-xl' : ''
+                                        } ${isTopRightCorner ? 'rounded-tr-xl' : ''} ${isBottomLeftCorner ? 'rounded-bl-xl' : ''} ${
+                                            isBottomRightCorner ? 'rounded-br-xl' : ''
+                                        }`}
+                                        style={{
+                                            border: '1px solid rgba(0, 26, 51, 0.16)',
+                                        }}
+                                    >
+                                        <div
+                                            key={`shake-${shakeKeyValue}`}
+                                            className={`relative flex h-full w-full items-center justify-center text-xl sm:text-4xl ${shakeKeyValue > 0 ? getShakeIntensity(getProgressToNextLevel(clickCount)) : ''} ${pulseClickCount > 0 ? getGlowIntensity(progress) : ''}`}
+                                            style={{
+                                                opacity: fadeOpacity[position] !== undefined ? fadeOpacity[position] : 1,
+                                                transition: 'opacity 100ms linear',
+                                                lineHeight: '1',
+                                            }}
+                                        >
+                                            {renderEmoji()}
+                                        </div>
+                                        {(clickCount > 0 || cellEmoji) && (
+                                            <div
+                                                className="absolute right-0.5 bottom-0.5 hidden items-center justify-center rounded-full bg-gray-900/80 font-bold text-white md:flex"
+                                                style={{
+                                                    width: clickCount > 999 ? '24px' : '26px',
+                                                    height: clickCount > 999 ? '24px' : '26px',
+                                                    fontSize: clickCount > 999 ? '16px' : clickCount > 99 ? '10px' : '12px',
+                                                    opacity: fadeOpacity[position] !== undefined ? fadeOpacity[position] * 0.8 + 0.2 : 1,
+                                                    transition: 'opacity 100ms linear',
+                                                }}
+                                            >
+                                                {clickCount > 999 ? '🏆' : clickCount > 0 ? clickCount : ''}
+                                            </div>
+                                        )}
+                                    </button>
+                                );
+                            })}
+                        </div>
                     </div>
                 </div>
             </div>

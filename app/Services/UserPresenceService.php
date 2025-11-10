@@ -10,7 +10,7 @@ class UserPresenceService
 {
     private const USER_PRESENCE_CACHE_KEY = 'active_users';
 
-    private const USER_PRESENCE_TIMEOUT = 300; // 5 minutes
+    private const USER_PRESENCE_TIMEOUT = 30; // 30 seconds - users inactive if no events (clicks, focus, etc) in this time
 
     /**
      * Register a user as active
@@ -20,7 +20,7 @@ class UserPresenceService
         $userId = $this->getUserId();
         $users = Cache::get(self::USER_PRESENCE_CACHE_KEY, []);
 
-        // Update timestamp for this user
+        // Add this user to active users with current timestamp
         $users[$userId] = now()->timestamp;
         Cache::forever(self::USER_PRESENCE_CACHE_KEY, $users);
 
@@ -29,7 +29,23 @@ class UserPresenceService
     }
 
     /**
-     * Clean up inactive users and broadcast count
+     * Remove a user from active users
+     */
+    public function removeUser(): void
+    {
+        $userId = $this->getUserId();
+        $users = Cache::get(self::USER_PRESENCE_CACHE_KEY, []);
+
+        // Remove this user
+        unset($users[$userId]);
+        Cache::forever(self::USER_PRESENCE_CACHE_KEY, $users);
+
+        // Broadcast updated count
+        $this->broadcastUserCount();
+    }
+
+    /**
+     * Clean up inactive users (fallback for when browser events don't fire)
      */
     public function cleanupInactiveUsers(): int
     {
@@ -47,13 +63,13 @@ class UserPresenceService
         Cache::forever(self::USER_PRESENCE_CACHE_KEY, $activeUsers);
 
         $count = count($activeUsers);
-        broadcast(new UserCountUpdated($count))->toOthers();
+        broadcast(new UserCountUpdated($count));
 
         return $count;
     }
 
     /**
-     * Get current active user count
+     * Get current active user count (excludes stale users)
      */
     public function getActiveUserCount(): int
     {
@@ -88,6 +104,6 @@ class UserPresenceService
     private function broadcastUserCount(): void
     {
         $count = $this->getActiveUserCount();
-        broadcast(new UserCountUpdated($count))->toOthers();
+        broadcast(new UserCountUpdated($count));
     }
 }

@@ -25,6 +25,9 @@ class GridController extends Controller
 
     public function show(): \Inertia\Response
     {
+        // Clean up expired cells before showing the grid
+        $this->cleanupExpiredCells();
+
         $cells = Cache::get(self::GRID_CACHE_KEY, []);
         $timestamps = Cache::get(self::GRID_TIMESTAMPS_KEY, []);
         $clickCounts = Cache::get(self::GRID_CLICK_COUNTS_KEY, []);
@@ -46,6 +49,11 @@ class GridController extends Controller
             'click' => 'required|boolean',
         ]);
 
+        // Track user activity (they clicked, so they're active)
+        $presenceService = App::make(UserPresenceService::class);
+        $presenceService->registerUser();
+
+        // Get all data in a consistent way
         $clickCounts = Cache::get(self::GRID_CLICK_COUNTS_KEY, []);
         $clickCounts[$position] = ($clickCounts[$position] ?? 0) + 1;
         Cache::forever(self::GRID_CLICK_COUNTS_KEY, $clickCounts);
@@ -61,6 +69,7 @@ class GridController extends Controller
         $timestamps[$position] = $nowMs;
         Cache::forever(self::GRID_TIMESTAMPS_KEY, $timestamps);
 
+        // Broadcast all data together to ensure consistency
         broadcast(new GridCellUpdated([
             'position' => $position,
             'emoji' => $emoji,
@@ -70,13 +79,19 @@ class GridController extends Controller
 
         broadcast(new GridCellClicked($position, $clickCounts[$position]))->toOthers();
 
-        if ($this->isGridUniform($cells) && $this->canTriggerRain($emoji)) {
-            $this->setRainCooldown($emoji);
-            $displayEmoji = $this->getDisplayEmoji($emoji);
+        $majorityEmoji = $this->getMajorityEmoji($cells);
+        if ($majorityEmoji && $this->canTriggerRain($majorityEmoji)) {
+            $this->setRainCooldown($majorityEmoji);
+            $displayEmoji = $this->getDisplayEmoji($majorityEmoji);
             broadcast(new GridRainStarted($displayEmoji));
         }
 
-        return response()->json(['success' => true, 'clickCount' => $clickCounts[$position]]);
+        return response()->json([
+            'success' => true,
+            'clickCount' => $clickCounts[$position],
+            'emoji' => $emoji,
+            'timestamp' => $timestamps[$position],
+        ]);
     }
 
     public function clear(int $position): \Illuminate\Http\JsonResponse
@@ -93,6 +108,14 @@ class GridController extends Controller
         unset($clickCounts[$position]);
         Cache::forever(self::GRID_CLICK_COUNTS_KEY, $clickCounts);
 
+        // Broadcast the clear to all clients
+        broadcast(new GridCellUpdated([
+            'position' => $position,
+            'emoji' => null,
+            'timestamp' => null,
+            'clickCount' => 0,
+        ]));
+
         return response()->json(['success' => true]);
     }
 
@@ -107,23 +130,62 @@ class GridController extends Controller
         };
     }
 
-    private function isGridUniform(array $cells): bool
+    private function cleanupExpiredCells(): void
+    {
+        $cells = Cache::get(self::GRID_CACHE_KEY, []);
+        $timestamps = Cache::get(self::GRID_TIMESTAMPS_KEY, []);
+        $clickCounts = Cache::get(self::GRID_CLICK_COUNTS_KEY, []);
+
+        $nowMs = round(microtime(true) * 1000);
+        $fadeTimeMs = 60000; // 60 seconds - matches frontend EMOJI_FADE_DURATION
+
+        $expiredPositions = [];
+        foreach ($timestamps as $position => $timestamp) {
+            if (($nowMs - $timestamp) > $fadeTimeMs) {
+                $expiredPositions[] = $position;
+            }
+        }
+
+        // Remove expired cells
+        foreach ($expiredPositions as $position) {
+            unset($cells[$position]);
+            unset($timestamps[$position]);
+            unset($clickCounts[$position]);
+        }
+
+        // Save cleaned data back to cache
+        Cache::forever(self::GRID_CACHE_KEY, $cells);
+        Cache::forever(self::GRID_TIMESTAMPS_KEY, $timestamps);
+        Cache::forever(self::GRID_CLICK_COUNTS_KEY, $clickCounts);
+    }
+
+    private function getMajorityEmoji(array $cells): ?string
     {
         // 100 total squares - 4 center squares reserved for user count = 96 clickable squares
         $clickableGridSize = 96;
 
+        // Grid must be completely filled
         if (count($cells) !== $clickableGridSize) {
-            return false;
+            return null;
         }
 
-        $firstEmoji = reset($cells);
+        // Count each emoji
+        $emojiCounts = [];
         foreach ($cells as $emoji) {
-            if ($emoji !== $firstEmoji) {
-                return false;
+            $emojiCounts[$emoji] = ($emojiCounts[$emoji] ?? 0) + 1;
+        }
+
+        // Find the emoji with the most occurrences
+        $maxCount = 0;
+        $majorityEmoji = null;
+        foreach ($emojiCounts as $emoji => $count) {
+            if ($count > $maxCount) {
+                $maxCount = $count;
+                $majorityEmoji = $emoji;
             }
         }
 
-        return true;
+        return $majorityEmoji;
     }
 
     private function getDisplayEmoji(string $emoji): string
@@ -145,5 +207,13 @@ class GridController extends Controller
     private function setRainCooldown(string $emoji): void
     {
         Cache::put(self::RAIN_COOLDOWN_KEY, $emoji, self::RAIN_COOLDOWN_DURATION);
+    }
+
+    public function markActive(): \Illuminate\Http\JsonResponse
+    {
+        $presenceService = App::make(UserPresenceService::class);
+        $presenceService->registerUser();
+
+        return response()->json(['success' => true]);
     }
 }
