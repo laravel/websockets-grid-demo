@@ -264,8 +264,8 @@ export default function Grid({
                     <div className="flex flex-col items-center gap-6">
                         <svg width="245" height="32" viewBox="0 0 491 64" fill="none" xmlns="http://www.w3.org/2000/svg" className="h-8 w-auto">
                             <style>
-                                {`.laravel { fill: #1B1B18 } @media (prefers-color-scheme:dark) { .laravel { fill: #fff } }
-                                .reverb { fill: #868682 } @media (prefers-color-scheme:dark) { .reverb { fill: #A1A09A } }`}
+                                {`.laravel { fill: #1B1B18 }
+                                .reverb { fill: #868682 }`}
                             </style>
                             <rect width="64" height="64" fill="#FF95A8" />
                             <g clipPath="url(#clip0_259_510224)">
