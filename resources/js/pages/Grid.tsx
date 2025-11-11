@@ -9,8 +9,8 @@ declare global {
     }
 }
 
-const GRID_COLUMNS = 10;
-const GRID_ROWS = 10;
+const GRID_COLUMNS = 8;
+const GRID_ROWS = 8;
 const GRID_SIZE = GRID_COLUMNS * GRID_ROWS;
 const EMOJI_FADE_DURATION = 60000;
 const TAYLOR_EMOJI_URL = 'https://emoji.slack-edge.com/T030VF85W/taylor/0f1e49b19df93f08.png';
@@ -387,18 +387,18 @@ export default function Grid({
                             }}
                         >
                             {Array.from({ length: GRID_SIZE }).map((_, position) => {
-                                // Check if this position is in the center 2x2 area (positions 44, 45, 54, 55)
-                                const isCenterArea = position === 44 || position === 45 || position === 54 || position === 55;
+                                // Check if this position is in the center 2x2 area (positions 27, 28, 35, 36)
+                                const isCenterArea = position === 27 || position === 28 || position === 35 || position === 36;
 
-                                if (isCenterArea && position === 44) {
+                                if (isCenterArea && position === 27) {
                                     // Show user count spanning all 4 center squares
                                     return (
                                         <div
                                             key={position}
                                             className="relative z-10 flex items-center justify-center bg-zinc-50/50"
                                             style={{
-                                                gridColumn: '5 / 7',
-                                                gridRow: '5 / 7',
+                                                gridColumn: '4 / 6',
+                                                gridRow: '4 / 6',
                                                 boxShadow: 'inset 0 0 0 1px rgba(0, 26, 51, 0.16)',
                                             }}
                                         >
