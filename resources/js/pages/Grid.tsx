@@ -483,7 +483,7 @@ export default function Grid({
                                                 console.error('Failed to update cell:', error);
                                             }
                                         }}
-                                        className={`relative flex h-full w-full items-center justify-center bg-white text-4xl transition-all duration-100 hover:bg-zinc-50 ${
+                                        className={`relative flex h-full w-full touch-manipulation items-center justify-center bg-white text-4xl transition-all duration-100 hover:bg-zinc-50 ${
                                             isTopLeftCorner ? 'rounded-tl-xl' : ''
                                         } ${isTopRightCorner ? 'rounded-tr-xl' : ''} ${isBottomLeftCorner ? 'rounded-bl-xl' : ''} ${
                                             isBottomRightCorner ? 'rounded-br-xl' : ''
