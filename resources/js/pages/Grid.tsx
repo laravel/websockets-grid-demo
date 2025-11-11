@@ -505,7 +505,7 @@ export default function Grid({
                                         </div>
                                         {(clickCount > 0 || cellEmoji) && (
                                             <div
-                                                className="absolute right-0.5 bottom-0.5 hidden items-center justify-center rounded-full bg-gray-900/80 font-bold text-white md:flex"
+                                                className="absolute right-0.5 bottom-0.5 flex origin-bottom-right scale-75 items-center justify-center rounded-full bg-gray-900/80 font-bold text-white sm:scale-100"
                                                 style={{
                                                     width: clickCount > 999 ? '24px' : '26px',
                                                     height: clickCount > 999 ? '24px' : '26px',
