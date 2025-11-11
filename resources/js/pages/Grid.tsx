@@ -253,10 +253,7 @@ export default function Grid({
                 `}
             </style>
             <Head title="Emoji Grid" />
-            <div
-                className="px-safe flex min-h-dvh flex-col xl:flex-row xl:items-center xl:justify-center xl:gap-12"
-                style={{ backgroundColor: '#fcfcfd' }}
-            >
+            <div className="px-safe flex min-h-dvh flex-col xl:flex-row xl:items-center xl:justify-around" style={{ backgroundColor: '#fcfcfd' }}>
                 {raindrops.map((drop, index) => (
                     <Raindrop key={index} emoji={drop.emoji} delay={drop.delay} left={drop.left} />
                 ))}
