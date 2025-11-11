@@ -766,7 +766,7 @@ export default function Grid({
                                 </clipPath>
                             </defs>
                         </svg>
-                        <p className="text-center text-sm text-gray-900">Real-time collaborative grid — click cells to level up emojis</p>
+                        <p className="text-center text-sm text-gray-900 xl:text-xl">Real-time collaborative grid — click cells to level up emojis</p>
                         <div className="flex flex-wrap justify-center gap-3 sm:gap-4">
                             <div className="relative flex aspect-square w-12 items-center justify-center rounded-lg bg-white shadow-[0_0_0_1px_rgba(0,26,51,0.16),0_0_1px_0_rgba(0,0,0,0.03),0_1px_2px_0_rgba(0,0,0,0.06)] sm:w-20">
                                 <div className="text-2xl sm:text-4xl">❤️</div>
