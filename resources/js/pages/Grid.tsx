@@ -689,7 +689,14 @@ export default function Grid({
                             <g></g>
                         </svg>
 
-                        <svg width="245" height="32" viewBox="0 0 491 64" fill="none" xmlns="http://www.w3.org/2000/svg" className="h-8 w-auto">
+                        <svg
+                            width="245"
+                            height="32"
+                            viewBox="0 0 491 64"
+                            fill="none"
+                            xmlns="http://www.w3.org/2000/svg"
+                            className="h-8 w-auto xl:h-10"
+                        >
                             <style>
                                 {`.laravel { fill: #1B1B18 }
                                 .reverb { fill: #868682 }`}
