@@ -253,11 +253,11 @@ export default function Grid({
                 `}
             </style>
             <Head title="Emoji Grid" />
-            <div className="flex min-h-screen flex-col" style={{ backgroundColor: '#fcfcfd' }}>
+            <div className="px-safe flex min-h-dvh flex-col" style={{ backgroundColor: '#fcfcfd' }}>
                 {raindrops.map((drop, index) => (
                     <Raindrop key={index} emoji={drop.emoji} delay={drop.delay} left={drop.left} />
                 ))}
-                <div className="px-4 py-6 sm:px-6 sm:py-8">
+                <div className="py-6 sm:py-8">
                     <div className="flex flex-col items-center gap-6">
                         <svg width="245" height="32" viewBox="0 0 491 64" fill="none" xmlns="http://www.w3.org/2000/svg" className="h-8 w-auto">
                             <style>
@@ -329,34 +329,34 @@ export default function Grid({
                                 </clipPath>
                             </defs>
                         </svg>
-                        <p className="text-sm text-gray-900">Real-time collaborative grid — click cells to level up emojis</p>
+                        <p className="text-center text-sm text-gray-900">Real-time collaborative grid — click cells to level up emojis</p>
                         <div className="flex flex-wrap justify-center gap-3 sm:gap-4">
-                            <div className="relative flex aspect-square w-16 items-center justify-center rounded-lg bg-white shadow-[0_0_0_1px_rgba(0,26,51,0.16),0_0_1px_0_rgba(0,0,0,0.03),0_1px_2px_0_rgba(0,0,0,0.06)] sm:w-20">
-                                <div className="text-3xl sm:text-4xl">❤️</div>
+                            <div className="relative flex aspect-square w-12 items-center justify-center rounded-lg bg-white shadow-[0_0_0_1px_rgba(0,26,51,0.16),0_0_1px_0_rgba(0,0,0,0.03),0_1px_2px_0_rgba(0,0,0,0.06)] sm:w-20">
+                                <div className="text-2xl sm:text-4xl">❤️</div>
                                 <div className="absolute -right-1.5 -bottom-1.5 flex h-6 w-6 items-center justify-center rounded-full bg-gray-900/80 text-[11px] font-bold text-white">
                                     1
                                 </div>
                             </div>
-                            <div className="relative flex aspect-square w-16 items-center justify-center rounded-lg bg-white shadow-[0_0_0_1px_rgba(0,26,51,0.16),0_0_1px_0_rgba(0,0,0,0.03),0_1px_2px_0_rgba(0,0,0,0.06)] sm:w-20">
-                                <div className="text-3xl sm:text-4xl">🚀</div>
+                            <div className="relative flex aspect-square w-12 items-center justify-center rounded-lg bg-white shadow-[0_0_0_1px_rgba(0,26,51,0.16),0_0_1px_0_rgba(0,0,0,0.03),0_1px_2px_0_rgba(0,0,0,0.06)] sm:w-20">
+                                <div className="text-2xl sm:text-4xl">🚀</div>
                                 <div className="absolute -right-1.5 -bottom-1.5 flex h-6 w-6 items-center justify-center rounded-full bg-gray-900/80 text-[11px] font-bold text-white">
                                     10
                                 </div>
                             </div>
-                            <div className="relative flex aspect-square w-16 items-center justify-center rounded-lg bg-white shadow-[0_0_0_1px_rgba(0,26,51,0.16),0_0_1px_0_rgba(0,0,0,0.03),0_1px_2px_0_rgba(0,0,0,0.06)] sm:w-20">
-                                <div className="text-3xl sm:text-4xl">🤯</div>
+                            <div className="relative flex aspect-square w-12 items-center justify-center rounded-lg bg-white shadow-[0_0_0_1px_rgba(0,26,51,0.16),0_0_1px_0_rgba(0,0,0,0.03),0_1px_2px_0_rgba(0,0,0,0.06)] sm:w-20">
+                                <div className="text-2xl sm:text-4xl">🤯</div>
                                 <div className="absolute -right-1.5 -bottom-1.5 flex h-6 w-6 items-center justify-center rounded-full bg-gray-900/80 text-[11px] font-bold text-white">
                                     50
                                 </div>
                             </div>
-                            <div className="relative flex aspect-square w-16 items-center justify-center rounded-lg bg-white shadow-[0_0_0_1px_rgba(0,26,51,0.16),0_0_1px_0_rgba(0,0,0,0.03),0_1px_2px_0_rgba(0,0,0,0.06)] sm:w-20">
-                                <div className="text-3xl sm:text-4xl">🔥</div>
+                            <div className="relative flex aspect-square w-12 items-center justify-center rounded-lg bg-white shadow-[0_0_0_1px_rgba(0,26,51,0.16),0_0_1px_0_rgba(0,0,0,0.03),0_1px_2px_0_rgba(0,0,0,0.06)] sm:w-20">
+                                <div className="text-2xl sm:text-4xl">🔥</div>
                                 <div className="absolute -right-1.5 -bottom-1.5 flex h-6 w-6 items-center justify-center rounded-full bg-gray-900/80 text-[11px] font-bold text-white">
                                     100
                                 </div>
                             </div>
-                            <div className="relative flex aspect-square w-16 items-center justify-center rounded-lg bg-white shadow-[0_0_0_1px_rgba(0,26,51,0.16),0_0_1px_0_rgba(0,0,0,0.03),0_1px_2px_0_rgba(0,0,0,0.06)] sm:w-20">
-                                <div className="text-3xl sm:text-4xl">
+                            <div className="relative flex aspect-square w-12 items-center justify-center rounded-lg bg-white shadow-[0_0_0_1px_rgba(0,26,51,0.16),0_0_1px_0_rgba(0,0,0,0.03),0_1px_2px_0_rgba(0,0,0,0.06)] sm:w-20">
+                                <div className="text-2xl sm:text-4xl">
                                     <img
                                         src={TAYLOR_EMOJI_URL}
                                         alt="taylor"
@@ -372,17 +372,22 @@ export default function Grid({
                     </div>
                 </div>
 
-                <div className="flex flex-1 items-center justify-center overflow-auto p-4 sm:p-6">
-                    <div className="rounded-2xl p-2 shadow-[0px_0px_1.5px_0.5px_rgba(0,0,0,0.12)_inset]" style={{ backgroundColor: '#f9f9fb' }}>
+                <div className="flex flex-1 items-center justify-center overflow-auto">
+                    <div
+                        className="rounded-2xl p-2 shadow-[0px_0px_1.5px_0.5px_rgba(0,0,0,0.12)_inset]"
+                        style={{
+                            backgroundColor: '#f9f9fb',
+                            width: '100%',
+                            height: '100%',
+                            maxWidth: '800px',
+                            maxHeight: '800px',
+                        }}
+                    >
                         <div
                             className="grid gap-0 overflow-hidden rounded-xl bg-white shadow-[0_0_0_1px_rgba(0,26,51,0.16)]"
                             style={{
                                 gridTemplateColumns: `repeat(${GRID_COLUMNS}, minmax(0, 1fr))`,
                                 gridAutoRows: '1fr',
-                                width: '100vw',
-                                height: '100vw',
-                                maxWidth: '800px',
-                                maxHeight: '800px',
                                 aspectRatio: '1 / 1',
                             }}
                         >

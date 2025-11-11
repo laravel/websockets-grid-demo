@@ -7,6 +7,11 @@
     --font-sans: ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji';
 }
 
+.px-safe {
+  padding-left: calc(env(safe-area-inset-left, 0rem) + 1.25rem);
+  padding-right: calc(env(safe-area-inset-right, 0rem) + 1.25rem);
+}
+
 @keyframes shake-light {
     0%,
     100% {
