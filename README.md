@@ -23,7 +23,6 @@ This application is designed to be deployed on **Laravel Cloud**. You'll need to
 - 💾 **Persistent State** - Grid state and click counts survive page refreshes
 - 🔓 **Public Access** - No authentication required for demo purposes
 - 📡 **Optimized Broadcasting** - Uses `toOthers()` to prevent duplicate updates
-- 🎨 **Dark Mode Support** - Automatic theme switching
 
 ## 🏗️ Architecture
 
