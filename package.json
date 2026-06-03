@@ -43,7 +43,7 @@
         "tailwind-merge": "^3.0.1",
         "tailwindcss": "^4.0.0",
         "typescript": "^5.7.2",
-        "vite": "^7.0.4"
+        "vite": "^7.3.5"
     },
     "optionalDependencies": {
         "@rollup/rollup-linux-x64-gnu": "4.9.5",
